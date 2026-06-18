@@ -32,6 +32,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Estados para navegação de data e hora atual
+  const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
+  const [agoraTime, setAgoraTime] = useState<Date>(new Date());
 
   const fetchData = async () => {
     try {
@@ -56,24 +60,51 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     fetchData();
   }, []);
 
+  // Timer para atualizar a hora a cada minuto
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAgoraTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchData();
   };
 
-  // Filtrar dados para hoje
-  const hoje = new Date();
-  const agendamentosHoje = agendamentos.filter(ag => {
+  const navegarHoje = () => {
+    setDataSelecionada(new Date());
+  };
+
+  const alterarDia = (dias: number) => {
+    const novaData = new Date(dataSelecionada);
+    novaData.setDate(novaData.getDate() + dias);
+    setDataSelecionada(novaData);
+  };
+
+  const eHoje = (date: Date) => {
+    const hoje = new Date();
+    return date.getDate() === hoje.getDate() &&
+           date.getMonth() === hoje.getMonth() &&
+           date.getFullYear() === hoje.getFullYear();
+  };
+
+  // Filtrar dados para o dia selecionado
+  const agendamentosDia = agendamentos.filter(ag => {
     const d = new Date(ag.data);
-    return d.getDate() === hoje.getDate() &&
-           d.getMonth() === hoje.getMonth() &&
-           d.getFullYear() === hoje.getFullYear();
+    return d.getDate() === dataSelecionada.getDate() &&
+           d.getMonth() === dataSelecionada.getMonth() &&
+           d.getFullYear() === dataSelecionada.getFullYear();
   });
 
-  const totalMarcaçõesHoje = agendamentosHoje.length;
-  const faturamentoHoje = agendamentosHoje.reduce((acc, curr) => acc + Number(curr.valor_pago || 0), 0);
+  const totalMarcaçõesDia = agendamentosDia.length;
+  const faturamentoDia = agendamentosDia.reduce((acc, curr) => acc + Number(curr.valor_pago || 0), 0);
 
-  // Próximo cliente
+  // Calcular taxa de ocupação real (considerando jornada de 8h e 45min por marcação)
+  const taxaOcupacao = Math.min(Math.round((totalMarcaçõesDia * 0.75 / 8) * 100), 100);
+
+  // Próximo cliente (geral a partir de agora)
   const agora = new Date();
   const proximoAgendamento = agendamentos
     .filter(ag => new Date(ag.data) > agora)
@@ -95,21 +126,71 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const getStatusStyle = (status: string) => {
     const lower = status.toLowerCase();
     if (lower === 'concluido' || lower === 'confirmado') {
-      return COLORS.status.concluido;
+      return COLORS.status.confirmado;
     } else if (lower === 'pendente') {
       return COLORS.status.pendente;
+    } else if (lower === 'em espera') {
+      return { background: '#f0f4f8', text: '#505f76' }; // Neutro do design
     } else {
       return COLORS.status.cancelado;
     }
   };
 
   // Formatar data de cabeçalho
-  const dataCabecalho = hoje.toLocaleDateString('pt-PT', {
+  const dataCabecalho = dataSelecionada.toLocaleDateString('pt-PT', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
   const dataCabecalhoFormatada = dataCabecalho.charAt(0).toUpperCase() + dataCabecalho.slice(1);
+
+  // Lógica para renderizar o marcador de tempo se for hoje
+  const renderTimeMarker = (time: Date) => {
+    const horaFormatada = time.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    return (
+      <View style={styles.markerContainer} key="time_marker">
+        <View style={styles.markerLeftSpacer} />
+        <View style={styles.markerLine}>
+          <View style={styles.markerDot} />
+          <View style={styles.markerLineActive} />
+          <View style={styles.markerBadge}>
+            <Text style={styles.markerBadgeText}>{horaFormatada}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Gerar itens para a timeline, incluindo agendamentos e o marcador de hora se for hoje
+  const agendamentosOrdenados = [...agendamentosDia].sort(
+    (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
+  );
+
+  const timelineItems: Array<{ type: 'appointment' | 'time_marker'; data?: Agendamento; time?: Date }> = [];
+  
+  if (eHoje(dataSelecionada)) {
+    let markerInserted = false;
+    const agoraMs = agoraTime.getTime();
+
+    for (let i = 0; i < agendamentosOrdenados.length; i++) {
+      const agTime = new Date(agendamentosOrdenados[i].data).getTime();
+      
+      if (!markerInserted && agoraMs < agTime) {
+        timelineItems.push({ type: 'time_marker', time: agoraTime });
+        markerInserted = true;
+      }
+      
+      timelineItems.push({ type: 'appointment', data: agendamentosOrdenados[i] });
+    }
+    
+    if (!markerInserted) {
+      timelineItems.push({ type: 'time_marker', time: agoraTime });
+    }
+  } else {
+    agendamentosOrdenados.forEach(ag => {
+      timelineItems.push({ type: 'appointment', data: ag });
+    });
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -128,53 +209,84 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         contentContainerStyle={styles.scrollContent} 
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
-        {/* Título & Data */}
-        <View style={styles.titleSection}>
-          <Text style={styles.dateLabel}>{dataCabecalhoFormatada}</Text>
-          <Text style={styles.pageTitle}>A Sua Agenda</Text>
+        {/* Título & Data com Barra de Navegação */}
+        <View style={styles.titleSectionContainer}>
+          <View style={styles.titleSection}>
+            <Text style={styles.dateLabel}>{dataCabecalhoFormatada}</Text>
+            <Text style={styles.pageTitle}>A Sua Agenda</Text>
+          </View>
+          
+          <View style={styles.dateNavContainer}>
+            <TouchableOpacity style={styles.todayButton} onPress={navegarHoje} activeOpacity={0.7}>
+              <Calendar size={16} color={COLORS.textPrimary} />
+              <Text style={styles.todayButtonText}>Hoje</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.arrowNavContainer}>
+              <TouchableOpacity style={styles.arrowButton} onPress={() => alterarDia(-1)} activeOpacity={0.7}>
+                <Text style={styles.arrowButtonText}>‹</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.arrowButton} onPress={() => alterarDia(1)} activeOpacity={0.7}>
+                <Text style={styles.arrowButtonText}>›</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
-        {/* Bento Layout Cards */}
+        {/* Bento Layout Cards (Empilhados Verticalmente) */}
         <View style={styles.bentoGrid}>
-          <View style={styles.bentoRow}>
-            {/* Card 1: Marcações */}
-            <View style={styles.bentoCard}>
-              <View style={[styles.iconContainer, { backgroundColor: '#f0f4f8' }]}>
-                <Calendar size={20} color={COLORS.textPrimary} />
+          {/* Card 1: Resumo / Ocupação */}
+          <View style={styles.bentoCardVertical}>
+            <View style={styles.bentoCardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: COLORS.inputBackground }]}>
+                <Calendar size={20} color={COLORS.primary} weight="bold" />
               </View>
-              <View style={styles.bentoCardBottom}>
-                <Text style={styles.bentoValue}>{totalMarcaçõesHoje} Marcações</Text>
-                <Text style={styles.bentoLabel}>Agendadas para hoje</Text>
+              <View style={styles.ocupacaoBadge}>
+                <Text style={styles.ocupacaoBadgeText}>{taxaOcupacao}% OCUPADO</Text>
               </View>
             </View>
-
-            {/* Card 2: Faturamento */}
-            <View style={styles.bentoCard}>
-              <View style={[styles.iconContainer, { backgroundColor: '#f0f4f8' }]}>
-                <TrendUp size={20} color={COLORS.textPrimary} />
-              </View>
-              <View style={styles.bentoCardBottom}>
-                <Text style={styles.bentoValue}>{faturamentoHoje.toFixed(2)} €</Text>
-                <Text style={styles.bentoLabel}>Faturado hoje</Text>
-              </View>
+            <View style={styles.bentoCardContent}>
+              <Text style={styles.bentoValueText}>{totalMarcaçõesDia} Marcações</Text>
+              <Text style={styles.bentoLabelText}>
+                {Math.max(0, 8 - Math.round(totalMarcaçõesDia * 0.75))} horas restantes disponíveis
+              </Text>
             </View>
           </View>
 
-          {/* Card 3: Próximo Cliente */}
-          <View style={[styles.bentoCardLarge, { backgroundColor: COLORS.primary }]}>
-            <View style={styles.bentoCardLargeHeader}>
-              <Text style={styles.nextClientLabel}>PRÓXIMO CLIENTE</Text>
-              <Clock size={16} color={COLORS.surface} style={{ opacity: 0.7 }} />
+          {/* Card 2: Faturamento */}
+          <View style={styles.bentoCardVertical}>
+            <View style={styles.bentoCardHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: COLORS.inputBackground }]}>
+                <TrendUp size={20} color={COLORS.primary} weight="bold" />
+              </View>
+            </View>
+            <View style={styles.bentoCardContent}>
+              <Text style={styles.bentoValueText}>{faturamentoDia.toFixed(2)} €</Text>
+              <Text style={styles.bentoLabelText}>Volume estimado para o dia</Text>
+            </View>
+          </View>
+
+          {/* Card 3: Próximo Cliente (Preto Sólido) */}
+          <View style={[styles.bentoCardVertical, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}>
+            <View style={styles.bentoCardHeader}>
+              <Text style={styles.proximoClienteLabel}>PRÓXIMO CLIENTE</Text>
             </View>
             {proximoAgendamento && proximoCliente ? (
-              <View>
-                <Text style={styles.nextClientName}>{proximoCliente.nome}</Text>
-                <Text style={styles.nextClientDesc}>
-                  {proximoServico?.nome || 'Serviço'} • {formatarHora(proximoAgendamento.data)}
-                </Text>
+              <View style={styles.proximoClienteBody}>
+                <View style={styles.proximoClienteInfo}>
+                  <Text style={styles.proximoClienteName}>{proximoCliente.nome}</Text>
+                  <Text style={styles.proximoClienteService}>
+                    {proximoServico?.nome || 'Serviço'} • {formatarHora(proximoAgendamento.data)}
+                  </Text>
+                </View>
+                <View style={styles.proximoClienteArrowContainer}>
+                  <Text style={styles.proximoClienteArrow}>→</Text>
+                </View>
               </View>
             ) : (
-              <Text style={styles.nextClientName}>Sem marcações futuras</Text>
+              <View style={styles.proximoClienteBody}>
+                <Text style={styles.proximoClienteName}>Sem marcações futuras</Text>
+              </View>
             )}
           </View>
         </View>
@@ -185,68 +297,71 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
           {isLoading ? (
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 24 }} />
-          ) : agendamentos.length === 0 ? (
+          ) : agendamentosDia.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Sem agendamentos registados.</Text>
+              <Text style={styles.emptyText}>Sem agendamentos registados para este dia.</Text>
             </View>
           ) : (
             <View style={styles.timelineBody}>
               {/* Linha vertical da timeline */}
               <View style={styles.timelineLine} />
 
-              {/* Ordenar agendamentos do dia por hora */}
-              {agendamentos
-                .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
-                .map((item) => {
-                  const cliente = clientes.find((c) => c.id === item.cliente_id);
-                  const servico = servicos.find((s) => s.id === item.servico_id);
-                  const statusInfo = getStatusStyle(item.status);
+              {/* Mapear itens da timeline (agendamentos e marcador de hora atual se for hoje) */}
+              {timelineItems.map((item, index) => {
+                if (item.type === 'time_marker' && item.time) {
+                  return renderTimeMarker(item.time);
+                }
 
-                  return (
-                    <View key={item.id} style={styles.timelineSlot}>
-                      {/* Hora do slot */}
-                      <View style={styles.slotHourContainer}>
-                        <Text style={styles.slotHour}>{formatarHora(item.data)}</Text>
-                      </View>
+                const ag = item.data!;
+                const cliente = clientes.find((c) => c.id === ag.cliente_id);
+                const servico = servicos.find((s) => s.id === ag.servico_id);
+                const statusInfo = getStatusStyle(ag.status);
 
-                      {/* Indicador de nó na linha */}
-                      <View style={styles.timelineNode} />
-
-                      {/* Card de Agendamento */}
-                      <View style={styles.slotCard}>
-                        <View style={styles.slotCardHeader}>
-                          <Text style={styles.clientNameText}>{cliente?.nome || 'Cliente Desconhecido'}</Text>
-                          <View
-                            style={[
-                              styles.statusBadge,
-                              { backgroundColor: statusInfo.background }
-                            ]}
-                          >
-                            <Text style={[styles.statusBadgeText, { color: statusInfo.text }]}>
-                              {item.status.toUpperCase()}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.serviceText}>
-                          {servico?.nome || 'Serviço'} • {item.valor_pago ? `${Number(item.valor_pago).toFixed(2)}€` : ''}
-                        </Text>
-
-                        {/* Botões de contacto rápido se for confirmado e tiver telemóvel */}
-                        {cliente?.telemovel && (
-                          <View style={styles.cardActions}>
-                            <TouchableOpacity style={styles.actionIconButton} activeOpacity={0.7}>
-                              <Phone size={16} color={COLORS.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionIconButton} activeOpacity={0.7}>
-                              <Chat size={16} color={COLORS.textSecondary} />
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
+                return (
+                  <View key={ag.id || index} style={styles.timelineSlot}>
+                    {/* Hora do slot */}
+                    <View style={styles.slotHourContainer}>
+                      <Text style={styles.slotHour}>{formatarHora(ag.data)}</Text>
                     </View>
-                  );
-                })}
+
+                    {/* Indicador de nó na linha */}
+                    <View style={styles.timelineNode} />
+
+                    {/* Card de Agendamento */}
+                    <View style={styles.slotCard}>
+                      <View style={styles.slotCardHeader}>
+                        <Text style={styles.clientNameText}>{cliente?.nome || 'Cliente Desconhecido'}</Text>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: statusInfo.background }
+                          ]}
+                        >
+                          <Text style={[styles.statusBadgeText, { color: statusInfo.text }]}>
+                            {ag.status.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.serviceText}>
+                        {servico?.nome || 'Serviço'} • {ag.valor_pago ? `${Number(ag.valor_pago).toFixed(2)}€` : ''}
+                      </Text>
+
+                      {/* Botões de contacto rápido se for confirmado e tiver telemóvel */}
+                      {cliente?.telemovel && (
+                        <View style={styles.cardActions}>
+                          <TouchableOpacity style={styles.actionIconButton} activeOpacity={0.7}>
+                            <Phone size={16} color={COLORS.textSecondary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.actionIconButton} activeOpacity={0.7}>
+                            <Chat size={16} color={COLORS.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
@@ -316,10 +431,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  titleSection: {
+  titleSectionContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 16,
+  },
+  titleSection: {
+    flex: 1,
   },
   dateLabel: {
     fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
@@ -334,76 +455,181 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: COLORS.primary,
   },
+  dateNavContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  todayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  todayButtonText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    fontSize: 12,
+    color: COLORS.textPrimary,
+  },
+  arrowNavContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
+  },
+  arrowButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arrowButtonText: {
+    fontSize: 18,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
+  },
   bentoGrid: {
     paddingHorizontal: 20,
     gap: 16,
     marginBottom: 32,
   },
-  bentoRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  bentoCard: {
-    flex: 1,
+  bentoCardVertical: {
     backgroundColor: COLORS.surface,
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
-    minHeight: 120,
+    minHeight: 110,
     justifyContent: 'space-between',
   },
-  bentoCardBottom: {
-    marginTop: 8,
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
+  bentoCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  bentoValue: {
+  ocupacaoBadge: {
+    backgroundColor: COLORS.status.confirmado.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  ocupacaoBadgeText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    fontSize: 10,
+    color: COLORS.status.confirmado.text,
+  },
+  bentoCardContent: {
+    marginTop: 12,
+  },
+  bentoValueText: {
     fontFamily: TYPOGRAPHY.fontFamily.serifBold,
-    fontSize: 18,
+    fontSize: 20,
     color: COLORS.primary,
   },
-  bentoLabel: {
+  bentoLabelText: {
     fontFamily: TYPOGRAPHY.fontFamily.sans,
-    fontSize: 11,
+    fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
   },
-  bentoCardLarge: {
-    borderRadius: 12,
-    padding: 16,
-    minHeight: 100,
-    justifyContent: 'space-between',
-  },
-  bentoCardLargeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  nextClientLabel: {
+  proximoClienteLabel: {
     fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
     fontSize: 10,
     color: COLORS.surface,
     opacity: 0.7,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
-  nextClientName: {
+  proximoClienteBody: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: 12,
+  },
+  proximoClienteInfo: {
+    flex: 1,
+  },
+  proximoClienteName: {
     fontFamily: TYPOGRAPHY.fontFamily.serifBold,
     fontSize: 22,
     color: COLORS.surface,
   },
-  nextClientDesc: {
+  proximoClienteService: {
     fontFamily: TYPOGRAPHY.fontFamily.sans,
     fontSize: 13,
     color: COLORS.surface,
     opacity: 0.8,
     marginTop: 2,
+  },
+  proximoClienteArrowContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  proximoClienteArrow: {
+    fontSize: 18,
+    color: COLORS.surface,
+    fontWeight: 'bold',
+  },
+  markerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  markerLeftSpacer: {
+    width: 62,
+  },
+  markerLine: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    height: 20,
+  },
+  markerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    marginLeft: 6,
+    zIndex: 20,
+  },
+  markerLineActive: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.primary,
+    marginLeft: 10,
+  },
+  markerBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    position: 'absolute',
+    right: 0,
+    zIndex: 20,
+  },
+  markerBadgeText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    fontSize: 9,
+    color: COLORS.surface,
   },
   timelineContainer: {
     paddingHorizontal: 20,

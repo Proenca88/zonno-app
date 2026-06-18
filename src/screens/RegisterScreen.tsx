@@ -26,7 +26,7 @@ function generateUUID() {
 export function RegisterScreen({ navigation }: any) {
   const [nomeResponsavel, setNomeResponsavel] = useState('');
   const [nomeComercial, setNomeComercial] = useState('');
-  const [nicho, setNicho] = useState<'estetica' | 'barbearia' | 'cabeleireiro' | 'tattoo' | 'clinica' | 'outros'>('estetica');
+  const [nicho, setNicho] = useState<'estetica' | 'barbearia' | 'cabeleireiro' | 'tattoo' | 'clinica' | 'outros' | null>(null);
   const [email, setEmail] = useState('');
   const [telemovel, setTelemovel] = useState('');
   const [password, setPassword] = useState('');
@@ -47,6 +47,10 @@ export function RegisterScreen({ navigation }: any) {
   const handleRegister = async () => {
     if (!nomeResponsavel || !nomeComercial || !email || !telemovel || !password) {
       setErrorMsg('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    if (!nicho) {
+      setErrorMsg('Por favor, selecione o seu Nicho de Negócio.');
       return;
     }
     if (!termsAccepted) {
