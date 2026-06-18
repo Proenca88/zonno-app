@@ -373,26 +373,7 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
                 </View>
               </View>
 
-              {/* Valor / Preço */}
-              <View style={styles.inputWrapper}>
-                <Text style={styles.label}>Valor do Serviço (€)</Text>
-                <View style={styles.searchContainer}>
-                  <CurrencyEur size={20} color="#9ca3af" style={styles.inputIcon} />
-                  <TextInput
-                    style={[
-                      styles.inputWithIcon,
-                      focusedField === 'valor' && styles.inputFocused
-                    ]}
-                    value={valor}
-                    onChangeText={setValor}
-                    placeholder="0.00"
-                    keyboardType="numeric"
-                    placeholderTextColor="#9ca3af"
-                    onFocus={() => setFocusedField('valor')}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </View>
-              </View>
+
 
               {/* Observações */}
               <View style={styles.inputWrapper}>
