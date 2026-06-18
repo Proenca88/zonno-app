@@ -6,7 +6,7 @@ import { TYPOGRAPHY } from '../theme/typography';
 import { Platform } from 'react-native';
 
 // Importar ícones do Phosphor
-import { Calendar, Users, Sparkle, TrendUp, Gear } from 'phosphor-react-native';
+import { Calendar, Users, Sparkle, TrendUp, Gear, Scissors, PaintBrush, Stethoscope } from 'phosphor-react-native';
 
 // Importar Ecrãs
 import { SplashScreen } from '../screens/SplashScreen';
@@ -81,6 +81,14 @@ function TabNavigator({
           } else if (route.name === 'ClientesTab') {
             return <Users size={size} color={color} weight="fill" />;
           } else if (route.name === 'ServicosTab') {
+            const nicho = empresa?.nicho;
+            if (nicho === 'barbearia' || nicho === 'cabeleireiro') {
+              return <Scissors size={size} color={color} weight="fill" />;
+            } else if (nicho === 'tattoo') {
+              return <PaintBrush size={size} color={color} weight="fill" />;
+            } else if (nicho === 'clinica') {
+              return <Stethoscope size={size} color={color} weight="fill" />;
+            }
             return <Sparkle size={size} color={color} weight="fill" />;
           } else if (route.name === 'FinancasTab') {
             return <TrendUp size={size} color={color} weight="fill" />;
@@ -95,9 +103,9 @@ function TabNavigator({
           backgroundColor: COLORS.surface,
           borderTopWidth: 1,
           borderTopColor: COLORS.border,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           paddingTop: 8,
-          height: Platform.OS === 'ios' ? 88 : 64,
+          height: Platform.OS === 'ios' ? 88 : undefined,
         },
         tabBarLabelStyle: {
           fontFamily: TYPOGRAPHY.fontFamily.sans,

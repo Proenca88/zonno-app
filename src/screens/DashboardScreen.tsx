@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   FlatList,
@@ -58,9 +59,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [currentUser.empresa_id])
+  );
 
   // Timer para atualizar a hora a cada minuto
   useEffect(() => {
@@ -144,8 +147,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   // Próximo cliente (geral a partir de agora)
   const agora = new Date();
   const proximoAgendamento = agendamentos
-    .filter(ag => new Date(ag.data) > agora)
-    .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())[0];
+    .filter(ag => {
+      const dataHora = new Date(`${ag.data}T${ag.hora}`);
+      return dataHora > agora;
+    })
+    .sort((a, b) => {
+      const dataHoraA = new Date(`${a.data}T${a.hora}`);
+      const dataHoraB = new Date(`${b.data}T${b.hora}`);
+      return dataHoraA.getTime() - dataHoraB.getTime();
+    })[0];
 
   const proximoCliente = proximoAgendamento
     ? clientes.find(c => c.id === proximoAgendamento.cliente_id)
@@ -155,9 +165,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     ? servicos.find(s => s.id === proximoAgendamento.servico_id)
     : null;
 
-  const formatarHora = (dataStr: string) => {
-    const d = new Date(dataStr);
-    return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const formatarHora = (horaStr: string) => {
+    if (!horaStr) return '00:00';
+    const partes = horaStr.split(':');
+    if (partes.length >= 2) {
+      return `${partes[0]}:${partes[1]}`;
+    }
+    return horaStr;
   };
 
   const getStatusStyle = (status: string) => {
@@ -200,7 +214,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
   // Gerar itens para a timeline, incluindo agendamentos e o marcador de hora se for hoje
   const agendamentosOrdenados = [...agendamentosDia].sort(
-    (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
+    (a, b) => a.hora.localeCompare(b.hora)
   );
 
   const timelineItems: Array<{ type: 'appointment' | 'time_marker'; data?: Agendamento; time?: Date }> = [];
@@ -210,14 +224,16 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     const agoraMs = agoraTime.getTime();
 
     for (let i = 0; i < agendamentosOrdenados.length; i++) {
-      const agTime = new Date(agendamentosOrdenados[i].data).getTime();
+      const ag = agendamentosOrdenados[i];
+      const agDate = new Date(`${ag.data}T${ag.hora}`);
+      const agTime = agDate.getTime();
       
       if (!markerInserted && agoraMs < agTime) {
         timelineItems.push({ type: 'time_marker', time: agoraTime });
         markerInserted = true;
       }
       
-      timelineItems.push({ type: 'appointment', data: agendamentosOrdenados[i] });
+      timelineItems.push({ type: 'appointment', data: ag });
     }
     
     if (!markerInserted) {
@@ -313,7 +329,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 <View style={styles.proximoClienteInfo}>
                   <Text style={styles.proximoClienteName}>{proximoCliente.nome}</Text>
                   <Text style={styles.proximoClienteService}>
-                    {proximoServico?.nome || 'Serviço'} • {formatarHora(proximoAgendamento.data)}
+                    {proximoServico?.nome || 'Serviço'} • {formatarHora(proximoAgendamento.hora)}
                   </Text>
                 </View>
                 <View style={styles.proximoClienteArrowContainer}>
@@ -358,7 +374,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <View key={ag.id || index} style={styles.timelineSlot}>
                     {/* Hora do slot */}
                     <View style={styles.slotHourContainer}>
-                      <Text style={styles.slotHour}>{formatarHora(ag.data)}</Text>
+                      <Text style={styles.slotHour}>{formatarHora(ag.hora)}</Text>
                     </View>
 
                     {/* Indicador de nó na linha */}
