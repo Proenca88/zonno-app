@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   useWindowDimensions,
+  Linking,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -26,7 +27,8 @@ import {
   UploadSimple, 
   PlusCircle, 
   Chat,
-  DotsThreeVertical
+  DotsThreeVertical,
+  Cake,
 } from 'phosphor-react-native';
 
 interface FichaClienteScreenProps {
@@ -149,6 +151,60 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
       : partesNome[0].charAt(0).toUpperCase();
   };
 
+  // Formatar Aniversário por extenso (Ex: "14 de Agosto, 1992")
+  const formatarAniversario = (dataStr?: string | null) => {
+    if (!dataStr) return 'Não informada';
+    try {
+      const partes = dataStr.split('-');
+      if (partes.length === 3) {
+        const ano = partes[0];
+        const mesIndex = parseInt(partes[1], 10) - 1;
+        const dia = parseInt(partes[2], 10);
+        
+        const meses = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        
+        return `${dia} de ${meses[mesIndex]}, ${ano}`;
+      }
+      
+      const d = new Date(dataStr);
+      const meses = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      return `${d.getDate()} de ${meses[d.getMonth()]}, ${d.getFullYear()}`;
+    } catch {
+      return dataStr;
+    }
+  };
+
+  const formatarNumeroWhatsApp = (num: string) => {
+    const apenasNumeros = num.replace(/\D/g, '');
+    if (apenasNumeros.length === 9) {
+      return '351' + apenasNumeros;
+    }
+    return apenasNumeros;
+  };
+
+  const handleLigar = () => {
+    if (cliente?.telemovel) {
+      Linking.openURL(`tel:${cliente.telemovel}`).catch(() => {
+        Alert.alert("Erro", "Não foi possível efetuar a chamada.");
+      });
+    }
+  };
+
+  const handleWhatsApp = () => {
+    if (cliente?.telemovel) {
+      const numWhatsApp = formatarNumeroWhatsApp(cliente.telemovel);
+      Linking.openURL(`https://wa.me/${numWhatsApp}`).catch(() => {
+        Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
+      });
+    }
+  };
+
   // Total Gasto acumulado
   const totalGasto = agendamentos.reduce((sum, ag) => sum + Number(ag.valor_pago || 0), 0);
   const totalVisitas = agendamentos.length;
@@ -239,7 +295,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <ScrollView 
-          style={styles.scrollView}
+          style={[styles.scrollView, Platform.OS === 'web' && ({ height: 'calc(100vh - 64px)' } as any)]}
           contentContainerStyle={styles.scrollContent} 
           keyboardShouldPersistTaps="handled"
         >
@@ -257,7 +313,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               {cliente.telemovel ? (
                 <TouchableOpacity 
                   style={styles.btnQuickAction} 
-                  onPress={() => Alert.alert("Ligar", `Ligar para ${cliente.nome}: ${cliente.telemovel}`)}
+                  onPress={handleLigar}
                   activeOpacity={0.8}
                 >
                   <Phone size={18} color={COLORS.surface} weight="fill" />
@@ -268,7 +324,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               {cliente.telemovel ? (
                 <TouchableOpacity 
                   style={styles.btnQuickActionSecondary} 
-                  onPress={() => Alert.alert("WhatsApp", `Abrir conversa de WhatsApp com ${cliente.nome}`)}
+                  onPress={handleWhatsApp}
                   activeOpacity={0.8}
                 >
                   <Chat size={18} color={COLORS.textPrimary} weight="fill" />
@@ -301,10 +357,10 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               </View>
 
               <View style={styles.infoRow}>
-                <CalendarBlank size={18} color={COLORS.textSecondary} />
+                <Cake size={18} color={COLORS.textSecondary} />
                 <View style={styles.infoText}>
                   <Text style={styles.infoLabel}>ANIVERSÁRIO</Text>
-                  <Text style={styles.infoValue}>{formatarData(cliente.nascimento)}</Text>
+                  <Text style={styles.infoValue}>{formatarAniversario(cliente.nascimento)}</Text>
                 </View>
               </View>
             </View>
