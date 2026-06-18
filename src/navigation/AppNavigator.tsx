@@ -95,9 +95,9 @@ function TabNavigator({
           backgroundColor: COLORS.surface,
           borderTopWidth: 1,
           borderTopColor: COLORS.border,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
           paddingTop: 8,
-          height: Platform.OS === 'ios' ? 88 : 72,
+          height: Platform.OS === 'ios' ? 88 : 64,
         },
         tabBarLabelStyle: {
           fontFamily: TYPOGRAPHY.fontFamily.sans,

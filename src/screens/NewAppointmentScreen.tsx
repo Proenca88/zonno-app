@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -33,7 +34,14 @@ interface ServicoData {
   id: string;
   nome: string;
   preco: number;
+  duracao: number; // duração em minutos
 }
+
+const SLOTS_HORARIOS = [
+  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+  '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'
+];
 
 export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAppointmentScreenProps) {
   const [clientes, setClientes] = useState<ClienteData[]>([]);
@@ -48,8 +56,11 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
   const [showClientesList, setShowClientesList] = useState(false);
 
   const [servicoSearch, setServicoSearch] = useState('');
-  const [selectedServico, setSelectedServico] = useState<ServicoData | null>(null);
+  const [selectedServicos, setSelectedServicos] = useState<ServicoData[]>([]);
   const [showServicosList, setShowServicosList] = useState(false);
+  
+  // Controle do Picker de Hora
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
 
   // Inicializar com a data de hoje formatada (AAAA-MM-DD)
   const formatarDataISO = (d: Date) => {
@@ -62,7 +73,13 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
   const formatarHoraISO = (d: Date) => {
     const horas = String(d.getHours()).padStart(2, '0');
     const minutos = String(d.getMinutes()).padStart(2, '0');
-    return `${horas}:${minutos}`;
+    // Arredondar para o slot de 30 min mais próximo para UX premium
+    const minsNum = d.getMinutes();
+    const minsRounded = minsNum < 15 ? '00' : minsNum < 45 ? '30' : '00';
+    let hrsNum = d.getHours();
+    if (minsNum >= 45) hrsNum = (hrsNum + 1) % 24;
+    const hrsStr = String(hrsNum).padStart(2, '0');
+    return `${hrsStr}:${minsRounded}`;
   };
 
   const [data, setData] = useState(formatarDataISO(new Date()));
@@ -82,7 +99,7 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
             .order('nome', { ascending: true }),
           supabase
             .from('servicos')
-            .select('id, nome, preco')
+            .select('id, nome, preco, duracao')
             .eq('empresa_id', currentUser.empresa_id)
             .order('nome', { ascending: true }),
         ]);
@@ -116,11 +133,22 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
   };
 
   const handleSelectServico = (servico: ServicoData) => {
-    setSelectedServico(servico);
-    setServicoSearch(servico.nome);
-    setValor(Number(servico.preco).toFixed(2));
+    if (!selectedServicos.find(s => s.id === servico.id)) {
+      const novosServicos = [...selectedServicos, servico];
+      setSelectedServicos(novosServicos);
+      const precoTotal = novosServicos.reduce((sum, s) => sum + Number(s.preco), 0);
+      setValor(precoTotal.toFixed(2));
+    }
+    setServicoSearch('');
     setShowServicosList(false);
     setErrorMessage(null);
+  };
+
+  const handleRemoveServico = (id: string) => {
+    const novosServicos = selectedServicos.filter(s => s.id !== id);
+    setSelectedServicos(novosServicos);
+    const precoTotal = novosServicos.reduce((sum, s) => sum + Number(s.preco), 0);
+    setValor(precoTotal.toFixed(2));
   };
 
   const handleSave = async () => {
@@ -128,8 +156,8 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
       setErrorMessage('Por favor, selecione um Cliente.');
       return;
     }
-    if (!selectedServico) {
-      setErrorMessage('Por favor, selecione um Serviço.');
+    if (selectedServicos.length === 0) {
+      setErrorMessage('Por favor, selecione pelo menos um Serviço.');
       return;
     }
     if (!data.trim() || !hora.trim()) {
@@ -155,16 +183,25 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
     setErrorMessage(null);
 
     try {
+      const servicoPrincipal = selectedServicos[0];
+      const extras = selectedServicos.slice(1).map(s => ({
+        id: s.id,
+        nome: s.nome,
+        preco: Number(s.preco),
+        duracao: s.duracao
+      }));
+
       const novoAgendamento = {
         id: generateUUID(),
         empresa_id: currentUser.empresa_id,
         cliente_id: selectedCliente.id,
-        servico_id: selectedServico.id,
+        servico_id: servicoPrincipal.id,
         data: data.trim(),
         hora: `${hora.trim()}:00`,
         status: 'confirmado',
-        valor_pago: valor ? parseFloat(valor) : selectedServico.preco,
+        valor_pago: valor ? parseFloat(valor) : selectedServicos.reduce((sum, s) => sum + Number(s.preco), 0),
         observacoes: observacoes.trim() || null,
+        servicos_extra: extras.length > 0 ? JSON.stringify(extras) : null,
         created_at: new Date().toISOString()
       };
 
@@ -281,9 +318,23 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
                 )}
               </View>
 
-              {/* Pesquisa / Seleção de Serviço */}
+              {/* Pesquisa / Seleção de Serviços */}
               <View style={[styles.inputWrapper, { zIndex: 40 }]}>
-                <Text style={styles.label}>Serviço *</Text>
+                <Text style={styles.label}>Serviços Selecionados *</Text>
+
+                {selectedServicos.length > 0 && (
+                  <View style={styles.selectedServicosContainer}>
+                    {selectedServicos.map(s => (
+                      <View key={s.id} style={styles.servicoTag}>
+                        <Text style={styles.servicoTagText}>{s.nome} ({Number(s.preco).toFixed(2)} €)</Text>
+                        <TouchableOpacity onPress={() => handleRemoveServico(s.id)} style={styles.removeServicoBtn}>
+                          <Text style={styles.removeServicoBtnText}>×</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 <View style={styles.searchContainer}>
                   <Sparkle size={20} color="#9ca3af" style={styles.inputIcon} />
                   <TextInput
@@ -294,11 +345,10 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
                     value={servicoSearch}
                     onChangeText={(text) => {
                       setServicoSearch(text);
-                      setSelectedServico(null);
                       setShowServicosList(true);
                       setErrorMessage(null);
                     }}
-                    placeholder="Pesquise e selecione o serviço..."
+                    placeholder="Pesquise e adicione um serviço..."
                     placeholderTextColor="#9ca3af"
                     onFocus={() => {
                       setFocusedField('servico');
@@ -351,24 +401,25 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
                 </View>
               </View>
 
-              {/* Hora da Marcação */}
+              {/* Hora da Marcação (Seletor de Hora Premium) */}
               <View style={styles.inputWrapper}>
                 <Text style={styles.label}>Hora (HH:MM) *</Text>
-                <View style={styles.searchContainer}>
+                <TouchableOpacity 
+                  style={styles.searchContainer}
+                  onPress={() => setShowTimePickerModal(true)}
+                  activeOpacity={0.8}
+                >
                   <Clock size={20} color="#9ca3af" style={styles.inputIcon} />
-                  <TextInput
-                    style={[
-                      styles.inputWithIcon,
-                      focusedField === 'hora' && styles.inputFocused
-                    ]}
-                    value={hora}
-                    onChangeText={setHora}
-                    placeholder="HH:MM (Ex: 14:30)"
-                    placeholderTextColor="#9ca3af"
-                    onFocus={() => setFocusedField('hora')}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </View>
+                  <View style={[
+                    styles.inputWithIcon,
+                    styles.fakeInput,
+                    showTimePickerModal && styles.inputFocused
+                  ]}>
+                    <Text style={[styles.fakeInputText, !hora && styles.fakeInputPlaceholder]}>
+                      {hora || 'Selecione o horário...'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               </View>
 
 
@@ -413,6 +464,53 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
           </ScrollView>
         )}
       </KeyboardAvoidingView>
+
+      {/* Modal Seletor de Hora Premium */}
+      <Modal
+        visible={showTimePickerModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTimePickerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Escolha o Horário</Text>
+            
+            <ScrollView contentContainerStyle={styles.timeGrid}>
+              {SLOTS_HORARIOS.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.timeSlotBtn,
+                    hora === item && styles.timeSlotBtnActive
+                  ]}
+                  onPress={() => {
+                    setHora(item);
+                    setShowTimePickerModal(false);
+                    setErrorMessage(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.timeSlotText,
+                    hora === item && styles.timeSlotTextActive
+                  ]}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.closeModalBtn}
+              onPress={() => setShowTimePickerModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.closeModalBtnText}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -588,5 +686,110 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: TYPOGRAPHY.fontFamily.sansBold,
     color: COLORS.surface,
+  },
+  selectedServicosContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  servicoTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    gap: 6,
+  },
+  servicoTagText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    fontSize: 13,
+    color: COLORS.textPrimary,
+  },
+  removeServicoBtn: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeServicoBtnText: {
+    fontSize: 12,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
+    lineHeight: 12,
+  },
+  fakeInput: {
+    justifyContent: 'center',
+  },
+  fakeInputText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+  },
+  fakeInputPlaceholder: {
+    color: '#9ca3af',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: '75%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.primary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  timeSlotBtn: {
+    width: '22%',
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  timeSlotBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  timeSlotText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.textPrimary,
+  },
+  timeSlotTextActive: {
+    color: COLORS.surface,
+  },
+  closeModalBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeModalBtnText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    fontSize: 15,
+    color: COLORS.textPrimary,
   },
 });

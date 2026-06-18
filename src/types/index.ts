@@ -57,6 +57,7 @@ export interface Agendamento {
   observacoes?: string | null;
   confirmado?: boolean;
   created_at?: string;
+  servicos_extra?: any; // Múltiplos serviços adicionais
 }
 
 export interface Categoria {

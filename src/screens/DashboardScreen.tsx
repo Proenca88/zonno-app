@@ -103,8 +103,43 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const totalMarcaçõesDia = agendamentosDia.length;
   const faturamentoDia = agendamentosDia.reduce((acc, curr) => acc + Number(curr.valor_pago || 0), 0);
 
-  // Calcular taxa de ocupação real (considerando jornada de 8h e 45min por marcação)
-  const taxaOcupacao = Math.min(Math.round((totalMarcaçõesDia * 0.75 / 8) * 100), 100);
+  // Função para parsear serviços adicionais
+  const parseServicosExtra = (extras: any): any[] => {
+    if (!extras) return [];
+    if (typeof extras === 'string') {
+      try {
+        return JSON.parse(extras);
+      } catch {
+        return [];
+      }
+    }
+    if (Array.isArray(extras)) {
+      return extras;
+    }
+    return [];
+  };
+
+  // Calcular tempo ocupado real do dia (soma de serviço principal + extras)
+  const calcularTempoOcupadoDia = () => {
+    let totalMinutos = 0;
+    agendamentosDia.forEach(ag => {
+      const sPrincipal = servicos.find(s => s.id === ag.servico_id);
+      totalMinutos += sPrincipal?.duracao || 30;
+
+      const extras = parseServicosExtra(ag.servicos_extra);
+      extras.forEach((ext: any) => {
+        totalMinutos += ext.duracao || 0;
+      });
+    });
+    return totalMinutos;
+  };
+
+  const minutosOcupados = calcularTempoOcupadoDia();
+  const horasOcupadas = minutosOcupados / 60;
+  const horasDisponiveis = Math.max(0, 8 - horasOcupadas);
+
+  // Calcular taxa de ocupação real (considerando jornada de 8h = 480 minutos)
+  const taxaOcupacao = Math.min(Math.round((minutosOcupados / 480) * 100), 100);
 
   // Próximo cliente (geral a partir de agora)
   const agora = new Date();
@@ -250,7 +285,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <View style={styles.bentoCardContent}>
               <Text style={styles.bentoValueText}>{totalMarcaçõesDia} Marcações</Text>
               <Text style={styles.bentoLabelText}>
-                {Math.max(0, 8 - Math.round(totalMarcaçõesDia * 0.75))} horas restantes disponíveis
+                {horasDisponiveis % 1 === 0 ? horasDisponiveis.toFixed(0) : horasDisponiveis.toFixed(1)} horas restantes disponíveis
               </Text>
             </View>
           </View>
@@ -345,9 +380,22 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                         </View>
                       </View>
 
-                      <Text style={styles.serviceText}>
-                        {servico?.nome || 'Serviço'} • {ag.valor_pago ? `${Number(ag.valor_pago).toFixed(2)}€` : ''}
-                      </Text>
+                      {(() => {
+                        const extras = parseServicosExtra(ag.servicos_extra);
+                        const nomesServicos = [
+                          servico?.nome || 'Serviço',
+                          ...extras.map((ext: any) => ext.nome || 'Serviço Extra')
+                        ].join(' + ');
+
+                        const duracaoTotal = (servico?.duracao || 30) + 
+                          extras.reduce((sum: number, ext: any) => sum + (ext.duracao || 0), 0);
+
+                        return (
+                          <Text style={styles.serviceText}>
+                            {nomesServicos} • {duracaoTotal} min
+                          </Text>
+                        );
+                      })()}
 
                       {/* Botões de contacto rápido se for confirmado e tiver telemóvel */}
                       {cliente?.telemovel && (
