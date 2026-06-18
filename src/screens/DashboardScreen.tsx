@@ -319,8 +319,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </View>
           </View>
 
-          {/* Card 3: Próximo Cliente (Preto Sólido) */}
-          <View style={[styles.bentoCardVertical, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}>
+          {/* Card 3: Próximo Cliente (Preto Sólido Clicável) */}
+          <TouchableOpacity 
+            style={[styles.bentoCardVertical, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+            onPress={() => proximoCliente && navigation?.navigate('PerfilCliente', { clienteId: proximoCliente.id })}
+            disabled={!proximoCliente}
+            activeOpacity={0.9}
+          >
             <View style={styles.bentoCardHeader}>
               <Text style={styles.proximoClienteLabel}>PRÓXIMO CLIENTE</Text>
             </View>
@@ -341,7 +346,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 <Text style={styles.proximoClienteName}>Sem marcações futuras</Text>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Timeline Section */}
