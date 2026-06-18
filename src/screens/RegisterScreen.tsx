@@ -15,6 +15,14 @@ import { COLORS, TYPOGRAPHY } from '../theme';
 import { CaretLeft } from 'phosphor-react-native';
 import { supabase } from '../remote/supabase';
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export function RegisterScreen({ navigation }: any) {
   const [nomeResponsavel, setNomeResponsavel] = useState('');
   const [nomeComercial, setNomeComercial] = useState('');
@@ -51,7 +59,7 @@ export function RegisterScreen({ navigation }: any) {
 
     try {
       // 1. Criar a Empresa no Supabase
-      const empresaId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const empresaId = generateUUID();
       const { data: newEmpresa, error: empresaError } = await supabase
         .from('empresas')
         .insert({
@@ -69,7 +77,7 @@ export function RegisterScreen({ navigation }: any) {
       }
 
       // 2. Criar o Utilizador Administrador associado a essa empresa
-      const userId = Math.random().toString(36).substring(2, 15);
+      const userId = generateUUID();
       const { error: userError } = await supabase
         .from('usuarios')
         .insert({
