@@ -204,7 +204,15 @@ export function MainNavigator({
       </Stack.Screen>
 
       {/* Telas Operacionais */}
-      <Stack.Screen name="NewAppointment" component={NewAppointmentScreen} />
+      <Stack.Screen name="NewAppointment">
+        {(props) => (
+          <NewAppointmentScreen
+            {...props}
+            currentUser={currentUser}
+            empresa={empresa}
+          />
+        )}
+      </Stack.Screen>
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="NovoCliente">
         {(props) => (
