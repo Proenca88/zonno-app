@@ -180,19 +180,6 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({
       >
         <Plus size={24} color={COLORS.surface} weight="bold" />
       </TouchableOpacity>
-
-      {/* Navegação Inferior */}
-      <View style={styles.bottomTab}>
-        <TouchableOpacity style={styles.tabItem} onPress={onNavigateToAgenda} activeOpacity={0.7}>
-          <Calendar size={22} color={COLORS.textSecondary} weight="regular" />
-          <Text style={styles.tabLabel}>Agenda</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabItem} disabled={true}>
-          <Users size={22} color={COLORS.primary} weight="fill" />
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Clientes</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
@@ -373,36 +360,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-  },
-  bottomTab: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: Platform.OS === 'ios' ? 76 : 64,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
-  },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    height: '100%',
-  },
-  tabLabel: {
-    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
-    fontSize: 10,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-  },
-  tabLabelActive: {
-    color: COLORS.primary,
-    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
   },
 });
 
