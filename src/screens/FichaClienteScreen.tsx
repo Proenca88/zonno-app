@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -41,6 +42,9 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   clienteId,
   onBackClick,
 }) => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
@@ -234,7 +238,11 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <ActivityIndicator color={COLORS.primary} size="large" />
         </View>
       ) : cliente ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent} 
+          keyboardShouldPersistTaps="handled"
+        >
           
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
@@ -271,9 +279,9 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           </View>
 
           {/* Bento Grid */}
-          <View style={styles.bentoGrid}>
+          <View style={[styles.bentoGrid, { flexDirection: isDesktop ? 'row' : 'column' }]}>
             {/* Card 1: Contactos */}
-            <View style={styles.bentoCard}>
+            <View style={[styles.bentoCard, isDesktop ? { flex: 4 } : { width: '100%' }]}>
               <Text style={styles.bentoCardTitle}>Contactos</Text>
               
               <View style={styles.infoRow}>
@@ -302,11 +310,11 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
             </View>
 
             {/* Card 2: KPIs Bento */}
-            <View style={styles.bentoCard}>
+            <View style={[styles.bentoCard, isDesktop ? { flex: 8 } : { width: '100%', marginTop: isDesktop ? 0 : 16 }]}>
               <Text style={styles.bentoCardTitle}>KPIs e Estado</Text>
               
-              <View style={styles.statsContainer}>
-                <View style={styles.statItem}>
+              <View style={[styles.statsContainer, { flexDirection: isDesktop ? 'row' : 'column', gap: 16 }]}>
+                <View style={[styles.statItem, isDesktop && { flex: 1, borderRightWidth: 1, borderRightColor: COLORS.border + '60', paddingRight: 16 }]}>
                   <Text style={styles.infoLabel}>TOTAL GASTO</Text>
                   <Text style={styles.statValue}>{totalGasto > 0 ? totalGasto.toFixed(2) : '1450.00'}€</Text>
                   <View style={styles.trendBadge}>
@@ -315,7 +323,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
                   </View>
                 </View>
                 
-                <View style={[styles.statItem, { marginTop: 16 }]}>
+                <View style={[styles.statItem, isDesktop ? { flex: 1, borderRightWidth: 1, borderRightColor: COLORS.border + '60', paddingRight: 16 } : { marginTop: 16 }]}>
                   <Text style={styles.infoLabel}>VISITAS TOTAIS</Text>
                   <Text style={styles.statValue}>{totalVisitas > 0 ? totalVisitas : '12'}</Text>
                   <Text style={styles.statSub}>
@@ -323,7 +331,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
                   </Text>
                 </View>
 
-                <View style={[styles.statItem, { marginTop: 16 }]}>
+                <View style={[styles.statItem, isDesktop ? { flex: 1 } : { marginTop: 16 }]}>
                   <Text style={styles.infoLabel}>ESTADO</Text>
                   <View style={[styles.badge, getCategoriaBadgeStyle(categoriaText)]}>
                     <Text style={[styles.badgeText, getCategoriaBadgeTextStyle(categoriaText)]}>
@@ -541,6 +549,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     height: 64,

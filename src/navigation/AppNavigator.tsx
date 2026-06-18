@@ -97,6 +97,7 @@ function TabNavigator({
           }
           return null;
         },
+        tabBarShowLabel: true,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textSecondary,
         tabBarStyle: {
@@ -105,12 +106,13 @@ function TabNavigator({
           borderTopColor: COLORS.border,
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           paddingTop: 8,
-          height: Platform.OS === 'ios' ? 88 : undefined,
+          height: Platform.OS === 'ios' ? 88 : 64,
         },
         tabBarLabelStyle: {
           fontFamily: TYPOGRAPHY.fontFamily.sans,
           fontSize: 11,
           fontWeight: '600',
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
         },
         headerStyle: {
           backgroundColor: COLORS.surface,
