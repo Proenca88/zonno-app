@@ -1,38 +1,53 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
-import { Calendar } from 'phosphor-react-native';
 
 interface OnboardingScreenProps {
   onStartClick: () => void;
 }
 
+const { width } = Dimensions.get('window');
+
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onStartClick }) => {
   return (
     <View style={styles.container}>
-      {/* Topo com nome da marca */}
-      <Text style={styles.logoText}>Zonno</Text>
+      {/* Topo com nome da marca em caixa alta e espaçamento elegante */}
+      <Text style={styles.logoText}>ZONNO</Text>
 
-      {/* Ilustração geométrica premium estilizada */}
+      {/* Ilustração premium real obtida do Stitch */}
       <View style={styles.illustrationContainer}>
-        <View style={styles.outerCircle}>
-          <View style={styles.midCircle}>
-            <Calendar size={64} color={COLORS.primary} weight="thin" />
-          </View>
-        </View>
+        <Image 
+          source={require('../../assets/onboarding-illustration.png')} 
+          style={styles.illustration}
+          resizeMode="contain"
+        />
       </View>
 
       {/* Bloco de texto explicativo */}
       <View style={styles.textContainer}>
         <Text style={styles.titleText}>Agenda Inteligente</Text>
         <Text style={styles.descText}>
-          Faça a gestão dos seus clientes e marcações num só sítio e com o máximo de facilidade e rapidez.
+          Faça a gestão dos seus agendamentos, clientes e faturação num único lugar, de forma simples e rápida.
         </Text>
       </View>
 
-      {/* Botão de início */}
+      {/* Indicadores de slides (dots) como no Stitch */}
+      <View style={styles.dotsContainer}>
+        <View style={styles.activeDot} />
+        <View style={styles.inactiveDot} />
+        <View style={styles.inactiveDot} />
+      </View>
+
+      {/* Botão de início em caixa alta */}
       <TouchableOpacity style={styles.button} onPress={onStartClick} activeOpacity={0.9}>
-        <Text style={styles.buttonText}>Começar</Text>
+        <Text style={styles.buttonText}>COMEÇAR</Text>
+      </TouchableOpacity>
+
+      {/* Link de login inferior */}
+      <TouchableOpacity style={styles.loginLink} onPress={onStartClick} activeOpacity={0.7}>
+        <Text style={styles.loginLinkText}>
+          Já tem conta? <Text style={styles.loginLinkHighlight}>Entrar</Text>
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -42,56 +57,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 50,
+    paddingBottom: 20,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   logoText: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: TYPOGRAPHY.fontFamily.serifBold,
     color: COLORS.primary,
-    marginTop: 40,
+    letterSpacing: 6,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   illustrationContainer: {
-    height: 240,
-    width: 240,
+    width: '100%',
+    height: 280,
     justifyContent: 'center',
     alignItems: 'center',
+    marginVertical: 10,
   },
-  outerCircle: {
-    height: 200,
-    width: 200,
-    borderRadius: 100,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Ghost shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.04,
-    shadowRadius: 20,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-  },
-  midCircle: {
-    height: 140,
-    width: 140,
-    borderRadius: 70,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
+  illustration: {
+    width: '100%',
+    height: '100%',
   },
   textContainer: {
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   titleText: {
-    fontSize: 24,
+    fontSize: 26,
     fontFamily: TYPOGRAPHY.fontFamily.serifBold,
     color: COLORS.primary,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   descText: {
     fontSize: 15,
@@ -100,18 +100,57 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
   },
+  dotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  activeDot: {
+    width: 24,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#6c4b47', // Cor de destaque escura / marrom do Stitch
+    marginHorizontal: 4,
+  },
+  inactiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: 4,
+  },
   button: {
     width: '100%',
-    height: 54,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 14,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: TYPOGRAPHY.fontFamily.sansBold,
     color: COLORS.surface,
+    letterSpacing: 1,
+  },
+  loginLink: {
+    marginTop: 10,
+    paddingVertical: 8,
+  },
+  loginLinkText: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textSecondary,
+  },
+  loginLinkHighlight: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.primary,
+    textDecorationLine: 'underline',
   },
 });
