@@ -225,15 +225,19 @@ export function MainNavigator({
       </Stack.Screen>
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="NovoCliente">
-        {(props) => (
-          <NovoClienteScreen
-            {...props}
-            currentUser={currentUser}
-            empresa={empresa}
-            onBackClick={() => props.navigation.goBack()}
-            onSuccess={() => props.navigation.goBack()}
-          />
-        )}
+        {(props: any) => {
+          const { cliente } = props.route?.params || { cliente: undefined };
+          return (
+            <NovoClienteScreen
+              {...props}
+              currentUser={currentUser}
+              empresa={empresa}
+              clienteEdicao={cliente}
+              onBackClick={() => props.navigation.goBack()}
+              onSuccess={() => props.navigation.goBack()}
+            />
+          );
+        }}
       </Stack.Screen>
       <Stack.Screen name="PerfilCliente">
         {(props: any) => {

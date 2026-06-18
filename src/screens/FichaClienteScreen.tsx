@@ -36,6 +36,7 @@ interface FichaClienteScreenProps {
   empresa: Empresa;
   clienteId: string;
   onBackClick: () => void;
+  navigation?: any;
 }
 
 export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
@@ -43,6 +44,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   empresa,
   clienteId,
   onBackClick,
+  navigation,
 }) => {
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
@@ -205,6 +207,67 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
     }
   };
 
+  const handleMaisOpcoes = () => {
+    if (!cliente) return;
+    
+    Alert.alert(
+      "Opções do Cliente",
+      "Escolha o que pretende fazer:",
+      [
+        {
+          text: "Editar Cliente",
+          onPress: () => {
+            navigation?.navigate('NovoCliente', { cliente: cliente });
+          }
+        },
+        {
+          text: "Eliminar Cliente",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Eliminar Cliente",
+              `Tem a certeza de que pretende eliminar permanentemente o cliente ${cliente.nome}? Esta ação não pode ser desfeita e irá remover todo o seu histórico de visitas.`,
+              [
+                { text: "Cancelar", style: "cancel" },
+                {
+                  text: "Eliminar",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      setIsLoading(true);
+                      
+                      // Eliminar agendamentos associados
+                      await supabase
+                        .from('agendamentos')
+                        .delete()
+                        .eq('cliente_id', cliente.id);
+
+                      // Eliminar o cliente
+                      const { error } = await supabase
+                        .from('clientes')
+                        .delete()
+                        .eq('id', cliente.id);
+                        
+                      if (error) throw error;
+                      
+                      Alert.alert("Sucesso", "Cliente eliminado com sucesso.");
+                      onBackClick();
+                    } catch (err: any) {
+                      Alert.alert("Erro", `Não foi possível eliminar o cliente: ${err.message}`);
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }
+                }
+              ]
+            );
+          }
+        },
+        { text: "Cancelar", style: "cancel" }
+      ]
+    );
+  };
+
   // Total Gasto acumulado
   const totalGasto = agendamentos.reduce((sum, ag) => sum + Number(ag.valor_pago || 0), 0);
   const totalVisitas = agendamentos.length;
@@ -284,7 +347,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <CaretLeft size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Ficha do Cliente</Text>
-        <TouchableOpacity style={styles.moreButton} activeOpacity={0.7}>
+        <TouchableOpacity onPress={handleMaisOpcoes} style={styles.moreButton} activeOpacity={0.7}>
           <DotsThreeVertical size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
@@ -585,7 +648,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
             
             <TouchableOpacity 
               style={styles.btnEdit} 
-              onPress={() => Alert.alert("Editar Cliente", "Ação de edição de dados do cliente.")}
+              onPress={() => navigation?.navigate('NovoCliente', { cliente: cliente })}
               activeOpacity={0.8}
             >
               <Text style={styles.btnEditText}>EDITAR CLIENTE</Text>
@@ -605,6 +668,8 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+    height: (Platform.OS === 'web' ? '100vh' : 'auto') as any,
+    overflow: (Platform.OS === 'web' ? 'hidden' : 'visible') as any,
   },
   scrollView: {
     flex: 1,

@@ -31,6 +31,7 @@ interface NovoClienteScreenProps {
   empresa: Empresa;
   onBackClick: () => void;
   onSuccess: () => void;
+  clienteEdicao?: any;
 }
 
 export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
@@ -38,6 +39,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
   empresa,
   onBackClick,
   onSuccess,
+  clienteEdicao,
 }) => {
   const [nome, setNome] = useState('');
   const [telemovel, setTelemovel] = useState('');
@@ -48,6 +50,19 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
 
   // Estado dinâmico para os campos específicos de cada nicho
   const [nicheValues, setNicheValues] = useState<Record<string, string>>({});
+
+  // Inicializar dados se estiver em modo de edição
+  React.useEffect(() => {
+    if (clienteEdicao) {
+      setNome(clienteEdicao.nome || '');
+      setTelemovel(clienteEdicao.telemovel || '');
+      setEmail(clienteEdicao.email || '');
+      setNascimento(clienteEdicao.nascimento || '');
+      setMorada(clienteEdicao.morada || '');
+      setObservacoes(clienteEdicao.observacoes || '');
+      setNicheValues(clienteEdicao.dados_adicionais || {});
+    }
+  }, [clienteEdicao]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -116,36 +131,58 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
     setErrorMessage(null);
 
     try {
-      // Validar duplicados na tabela
-      const { data: existe } = await supabase
-        .from('clientes')
-        .select('id, nome')
-        .eq('telemovel', telemovel.trim())
-        .eq('empresa_id', currentUser.empresa_id);
+      // Validar duplicados apenas se o telemóvel for novo ou alterado
+      const telemovelAlterado = !clienteEdicao || clienteEdicao.telemovel !== telemovel.trim();
+      
+      if (telemovelAlterado) {
+        const { data: existe } = await supabase
+          .from('clientes')
+          .select('id, nome')
+          .eq('telemovel', telemovel.trim())
+          .eq('empresa_id', currentUser.empresa_id);
 
-      if (existe && existe.length > 0) {
-        setErrorMessage(`Já existe um cliente com o telemóvel ${telemovel} (${existe[0].nome}).`);
-        setIsLoading(false);
-        return;
+        if (existe && existe.length > 0) {
+          setErrorMessage(`Já existe um cliente com o telemóvel ${telemovel} (${existe[0].nome}).`);
+          setIsLoading(false);
+          return;
+        }
       }
 
-      const novoCliente = {
-        id: generateUUID(),
-        empresa_id: currentUser.empresa_id,
+      const dadosCliente = {
         nome: nome.trim(),
         telemovel: telemovel.trim(),
         email: email.trim() || null,
         nascimento: nascimento.trim() || null,
         morada: morada.trim() || null,
         observacoes: observacoes.trim() || null,
-        dados_adicionais: nicheValues // Salvar o objeto JSONB dinâmico
+        dados_adicionais: nicheValues
       };
 
-      const { error } = await supabase.from('clientes').insert([novoCliente]);
+      if (clienteEdicao) {
+        // Modo de Edição: UPDATE
+        const { error } = await supabase
+          .from('clientes')
+          .update(dadosCliente)
+          .eq('id', clienteEdicao.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        Alert.alert('Sucesso', 'Dados do cliente atualizados com sucesso!');
+      } else {
+        // Modo de Criação: INSERT
+        const novoCliente = {
+          id: generateUUID(),
+          empresa_id: currentUser.empresa_id,
+          ...dadosCliente
+        };
 
-      Alert.alert('Sucesso', 'Cliente guardado com sucesso!');
+        const { error } = await supabase
+          .from('clientes')
+          .insert([novoCliente]);
+
+        if (error) throw error;
+        Alert.alert('Sucesso', 'Cliente guardado com sucesso!');
+      }
+
       onSuccess();
     } catch (e: any) {
       setErrorMessage(`Erro ao guardar cliente: ${e.message || 'Erro de rede'}`);
@@ -165,14 +202,16 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
             <CaretLeft size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Novo Cliente</Text>
+          <Text style={styles.headerTitle}>{clienteEdicao ? 'Editar Cliente' : 'Novo Cliente'}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.introSection}>
             <Text style={styles.helperText}>
-              Crie um novo registo de cliente na sua base de dados Zonno.
+              {clienteEdicao 
+                ? 'Edite as informações e especificações do registo do cliente.' 
+                : 'Crie um novo registo de cliente na sua base de dados Zonno.'}
             </Text>
           </View>
 

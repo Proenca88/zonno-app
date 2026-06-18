@@ -11,6 +11,8 @@ import {
   SafeAreaView,
   ScrollView,
   Platform,
+  Alert,
+  Linking,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -76,6 +78,120 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchData();
+  };
+
+  const formatarNumeroWhatsApp = (num: string) => {
+    const apenasNumeros = num.replace(/\D/g, '');
+    if (apenasNumeros.length === 9) {
+      return '351' + apenasNumeros;
+    }
+    return apenasNumeros;
+  };
+
+  const handleLigarCliente = (telemovel: string) => {
+    Linking.openURL(`tel:${telemovel}`).catch(() => {
+      Alert.alert("Erro", "Não foi possível efetuar a chamada.");
+    });
+  };
+
+  const handleWhatsAppCliente = (telemovel: string) => {
+    const numWhatsApp = formatarNumeroWhatsApp(telemovel);
+    Linking.openURL(`https://wa.me/${numWhatsApp}`).catch(() => {
+      Alert.alert("Erro", "Não foi possível abrir o WhatsApp.");
+    });
+  };
+
+  const handleAgendamentoClick = (ag: Agendamento) => {
+    const cliente = clientes.find(c => c.id === ag.cliente_id);
+    const servico = servicos.find(s => s.id === ag.servico_id);
+    const nomeCliente = cliente?.nome || 'Cliente Desconhecido';
+    const nomeServico = servico?.nome || 'Serviço';
+    
+    const statusAtual = ag.status.toLowerCase();
+    
+    const botoes = [
+      statusAtual === 'confirmado' ? {
+        text: "Colocar Em Espera",
+        onPress: () => atualizarEstadoAgendamento(ag.id, 'pendente')
+      } : {
+        text: "Confirmar Marcação",
+        onPress: () => atualizarEstadoAgendamento(ag.id, 'confirmado')
+      },
+      {
+        text: "Concluir Marcação",
+        onPress: () => atualizarEstadoAgendamento(ag.id, 'concluido')
+      },
+      {
+        text: "Cancelar Marcação",
+        onPress: () => atualizarEstadoAgendamento(ag.id, 'cancelado')
+      },
+      {
+        text: "Eliminar Marcação",
+        style: "destructive" as const,
+        onPress: () => confirmarEliminarAgendamento(ag.id)
+      },
+      {
+        text: "Cancelar",
+        style: "cancel" as const
+      }
+    ];
+
+    Alert.alert(
+      "Gerir Marcação",
+      `Marcação de ${nomeCliente}\nServiço: ${nomeServico}\nHora: ${formatarHora(ag.hora)}\nEstado atual: ${ag.status.toUpperCase()}`,
+      botoes
+    );
+  };
+
+  const atualizarEstadoAgendamento = async (id: string, novoStatus: string) => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('agendamentos')
+        .update({ status: novoStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchData();
+      Alert.alert("Sucesso", `Estado da marcação atualizado para ${novoStatus.toUpperCase()}!`);
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível atualizar o estado: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const confirmarEliminarAgendamento = (id: string) => {
+    Alert.alert(
+      "Eliminar Marcação",
+      "Tem a certeza de que pretende eliminar permanentemente esta marcação?",
+      [
+        { text: "Não", style: "cancel" },
+        { 
+          text: "Sim, Eliminar", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              const { error } = await supabase
+                .from('agendamentos')
+                .delete()
+                .eq('id', id);
+
+              if (error) throw error;
+              
+              await fetchData();
+              Alert.alert("Sucesso", "Marcação eliminada com sucesso!");
+            } catch (e: any) {
+              Alert.alert("Erro", `Não foi possível eliminar: ${e.message}`);
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const navegarHoje = () => {
@@ -386,7 +502,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     <View style={styles.timelineNode} />
 
                     {/* Card de Agendamento */}
-                    <View style={styles.slotCard}>
+                    <TouchableOpacity 
+                      style={styles.slotCard}
+                      onPress={() => handleAgendamentoClick(ag)}
+                      activeOpacity={0.8}
+                    >
                       <View style={styles.slotCardHeader}>
                         <Text style={styles.clientNameText}>{cliente?.nome || 'Cliente Desconhecido'}</Text>
                         <View
@@ -418,18 +538,26 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                         );
                       })()}
 
-                      {/* Botões de contacto rápido se for confirmado e tiver telemóvel */}
+                      {/* Botões de contacto rápido se tiver telemóvel */}
                       {cliente?.telemovel && (
                         <View style={styles.cardActions}>
-                          <TouchableOpacity style={styles.actionIconButton} activeOpacity={0.7}>
+                          <TouchableOpacity 
+                            style={styles.actionIconButton} 
+                            onPress={() => handleLigarCliente(cliente.telemovel)}
+                            activeOpacity={0.7}
+                          >
                             <Phone size={16} color={COLORS.textSecondary} />
                           </TouchableOpacity>
-                          <TouchableOpacity style={styles.actionIconButton} activeOpacity={0.7}>
+                          <TouchableOpacity 
+                            style={styles.actionIconButton} 
+                            onPress={() => handleWhatsAppCliente(cliente.telemovel)}
+                            activeOpacity={0.7}
+                          >
                             <Chat size={16} color={COLORS.textSecondary} />
                           </TouchableOpacity>
                         </View>
                       )}
-                    </View>
+                    </TouchableOpacity>
                   </View>
                 );
               })}
