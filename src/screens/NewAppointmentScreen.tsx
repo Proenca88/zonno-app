@@ -155,15 +155,13 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
     setErrorMessage(null);
 
     try {
-      // Combinar Data e Hora numa data ISO válida
-      const dataISO = new Date(`${data.trim()}T${hora.trim()}:00`).toISOString();
-
       const novoAgendamento = {
         id: generateUUID(),
         empresa_id: currentUser.empresa_id,
         cliente_id: selectedCliente.id,
         servico_id: selectedServico.id,
-        data: dataISO,
+        data: data.trim(),
+        hora: `${hora.trim()}:00`,
         status: 'confirmado',
         valor_pago: valor ? parseFloat(valor) : selectedServico.preco,
         observacoes: observacoes.trim() || null,

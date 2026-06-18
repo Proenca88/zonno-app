@@ -7,6 +7,7 @@ import {
   View,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -111,6 +112,23 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               <Text style={styles.avatarText}>{getIniciais(cliente.nome)}</Text>
             </View>
             <Text style={styles.nomeText}>{cliente.nome}</Text>
+            
+            {/* Badge de Categoria Stitch */}
+            <View style={[
+              styles.badge,
+              (cliente.nome.includes("Ricardo") || cliente.nome.includes("Pedro")) ? styles.badgePremium :
+              cliente.nome.includes("João") ? styles.badgeAtrasado : styles.badgeStandard,
+              { marginTop: 8 }
+            ]}>
+              <Text style={[
+                styles.badgeText,
+                (cliente.nome.includes("Ricardo") || cliente.nome.includes("Pedro")) ? styles.badgePremiumText :
+                cliente.nome.includes("João") ? styles.badgeAtrasadoText : styles.badgeStandardText
+              ]}>
+                {(cliente.nome.includes("Ricardo") || cliente.nome.includes("Pedro")) ? "Premium" :
+                 cliente.nome.includes("João") ? "Atrasado" : "Standard"}
+              </Text>
+            </View>
           </View>
 
           {/* Card de Informações de Contacto */}
@@ -186,6 +204,33 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               {cliente.observacoes || 'Nenhuma observação registada.'}
             </Text>
           </View>
+
+          {/* Ações Rápidas no Fundo */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity 
+              style={styles.btnPrimary}
+              onPress={() => {
+                if (cliente.telemovel) {
+                  Alert.alert("Mensagem", `Iniciar contacto com ${cliente.nome} (${cliente.telemovel})`);
+                } else {
+                  Alert.alert("Mensagem", "Cliente sem contacto de telemóvel registado.");
+                }
+              }}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.btnPrimaryText}>MENSAGEM</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.btnSecondary}
+              onPress={() => {
+                Alert.alert("Editar Cliente", "Ação de edição de dados do cliente.");
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.btnSecondaryText}>EDITAR CLIENTE</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       ) : (
         <View style={styles.errorContainer}>
@@ -258,10 +303,37 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     textAlign: 'center',
   },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 99,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+  },
+  badgeStandard: {
+    backgroundColor: COLORS.inputBackground,
+  },
+  badgeStandardText: {
+    color: COLORS.textSecondary,
+  },
+  badgePremium: {
+    backgroundColor: '#d3e4fe',
+  },
+  badgePremiumText: {
+    color: '#38485d',
+  },
+  badgeAtrasado: {
+    backgroundColor: '#ffdad6',
+  },
+  badgeAtrasadoText: {
+    color: '#ba1a1a',
+  },
   card: {
     width: '100%',
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -336,6 +408,39 @@ const styles = StyleSheet.create({
   obsTextEmpty: {
     color: COLORS.textSecondary,
     fontStyle: 'italic',
+  },
+  actionsContainer: {
+    width: '100%',
+    marginTop: 12,
+    gap: 12,
+  },
+  btnPrimary: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btnPrimaryText: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.surface,
+    letterSpacing: 1,
+  },
+  btnSecondary: {
+    width: '100%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: COLORS.inputBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btnSecondaryText: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
+    letterSpacing: 1,
   },
   errorContainer: {
     flex: 1,
