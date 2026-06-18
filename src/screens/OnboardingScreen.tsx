@@ -66,16 +66,30 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onStartClick
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
       >
-        {SLIDES.map((slide) => (
+        {SLIDES.map((slide, index) => (
           <View key={slide.id} style={styles.slideContainer}>
-            {/* Moldura ilustrativa com cantos arredondados e sombra premium */}
-            <View style={styles.illustrationContainer}>
-              <Image 
-                source={slide.image} 
-                style={styles.illustration}
-                resizeMode="contain"
-              />
-            </View>
+            {index === 0 ? (
+              <View style={styles.tabletIllustrationContainer}>
+                <Image 
+                  source={slide.image} 
+                  style={styles.illustration}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View style={styles.phoneMockupContainer}>
+                {/* Dynamic Island / Notch do telemóvel simulado */}
+                <View style={styles.phoneNotch} />
+                
+                <View style={styles.phoneInnerContainer}>
+                  <Image 
+                    source={slide.image} 
+                    style={styles.phoneIllustration}
+                    resizeMode="cover"
+                  />
+                </View>
+              </View>
+            )}
 
             {/* Bloco de texto explicativo */}
             <View style={styles.textContainer}>
@@ -146,7 +160,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: 'center',
   },
-  illustrationContainer: {
+  tabletIllustrationContainer: {
     width: width - 48,
     height: 280,
     justifyContent: 'center',
@@ -166,6 +180,42 @@ const styles = StyleSheet.create({
   illustration: {
     width: '100%',
     height: '100%',
+  },
+  phoneMockupContainer: {
+    width: 170, // Proporção de aspecto perfeita para telemóvel simulado (170x280)
+    height: 280,
+    backgroundColor: '#111827', // Moldura preta fosca do telemóvel (luxo)
+    borderRadius: 32, // Cantos bem arredondados do telefone
+    padding: 6, // Espessura da borda física do telefone
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 5,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phoneInnerContainer: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 26, // Cantos arredondados da tela interna
+    overflow: 'hidden',
+  },
+  phoneIllustration: {
+    width: '100%',
+    height: '100%',
+  },
+  phoneNotch: {
+    position: 'absolute',
+    top: 12,
+    width: 45,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#111827',
+    zIndex: 10,
   },
   textContainer: {
     alignItems: 'center',
@@ -197,7 +247,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#6c4b47', // Cor de destaque escura / marrom do Stitch
+    backgroundColor: '#6c4b47', // Cor de destaque do Stitch
     marginHorizontal: 4,
   },
   inactiveDot: {
