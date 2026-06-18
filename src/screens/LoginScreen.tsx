@@ -209,25 +209,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuc
               <Text style={styles.biometryText}>Entrar com Biometria</Text>
             </TouchableOpacity>
 
-            {/* Divisor */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OU</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Google Login */}
-            <TouchableOpacity 
-              style={styles.googleButton}
-              onPress={() => alert('Login social indisponível de momento.')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.googleIconContainer}>
-                <Text style={styles.googleLetter}>G</Text>
-              </View>
-              <Text style={styles.googleText}>Continuar com Google</Text>
-            </TouchableOpacity>
-
             {/* Link de registo */}
             <View style={styles.registerContainer}>
               <Text style={styles.registerLabel}>Não tem conta?</Text>
@@ -239,7 +220,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuc
           
           {/* Copyright */}
           <Text style={styles.copyrightText}>
-            © 2024 Zonno. Todos os direitos reservados.{"\n"}Termos  |  Privacidade
+            © 2026 Zonno. Todos os direitos reservados.{"\n"}Termos  |  Privacidade
           </Text>
         </View>
       </ScrollView>

@@ -73,7 +73,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onStartClick
               <Image 
                 source={slide.image} 
                 style={styles.illustration}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </View>
 
