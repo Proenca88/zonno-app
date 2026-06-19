@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
   Modal,
   useWindowDimensions,
