@@ -332,7 +332,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   const historicoTecnico = agendamentos.filter(ag => ag.observacoes && ag.observacoes.trim() !== '');
 
   return (
-    <SafeAreaView style={[styles.safeArea, Platform.OS === 'web' && { height }]}>
+    <SafeAreaView style={styles.safeArea}>
       {/* TopBar */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
@@ -702,9 +702,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+    height: Platform.OS === 'web' ? '100%' : 'auto',
   },
   scrollView: {
     flex: 1,
+    height: Platform.OS === 'web' ? '100%' : 'auto',
   },
   header: {
     height: 64,

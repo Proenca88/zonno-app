@@ -34,7 +34,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onLogoutClick,
   navigation,
 }) => {
-  const { height } = useWindowDimensions();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -337,7 +336,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, Platform.OS === 'web' && { height }]}>
+    <SafeAreaView style={styles.safeArea}>
       {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -350,6 +349,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       </View>
 
       <ScrollView 
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent} 
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
@@ -639,6 +639,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+    height: Platform.OS === 'web' ? '100%' : 'auto',
+  },
+  scrollView: {
+    flex: 1,
+    height: Platform.OS === 'web' ? '100%' : 'auto',
   },
   header: {
     height: 64,
