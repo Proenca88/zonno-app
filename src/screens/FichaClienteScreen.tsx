@@ -11,6 +11,7 @@ import {
   Platform,
   useWindowDimensions,
   Linking,
+  Modal,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -46,14 +47,16 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   onBackClick,
   navigation,
 }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isDesktop = width >= 768;
+  const scrollViewHeight = Platform.OS === 'web' ? height - 64 : undefined;
 
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
 
   useEffect(() => {
     const loadAllData = async () => {
@@ -209,63 +212,53 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 
   const handleMaisOpcoes = () => {
     if (!cliente) return;
-    
-    Alert.alert(
-      "Opções do Cliente",
-      "Escolha o que pretende fazer:",
-      [
-        {
-          text: "Editar Cliente",
-          onPress: () => {
-            navigation?.navigate('NovoCliente', { cliente: cliente });
-          }
-        },
-        {
-          text: "Eliminar Cliente",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert(
-              "Eliminar Cliente",
-              `Tem a certeza de que pretende eliminar permanentemente o cliente ${cliente.nome}? Esta ação não pode ser desfeita e irá remover todo o seu histórico de visitas.`,
-              [
-                { text: "Cancelar", style: "cancel" },
-                {
-                  text: "Eliminar",
-                  style: "destructive",
-                  onPress: async () => {
-                    try {
-                      setIsLoading(true);
-                      
-                      // Eliminar agendamentos associados
-                      await supabase
-                        .from('agendamentos')
-                        .delete()
-                        .eq('cliente_id', cliente.id);
+    setShowOptionsModal(true);
+  };
 
-                      // Eliminar o cliente
-                      const { error } = await supabase
-                        .from('clientes')
-                        .delete()
-                        .eq('id', cliente.id);
-                        
-                      if (error) throw error;
-                      
-                      Alert.alert("Sucesso", "Cliente eliminado com sucesso.");
-                      onBackClick();
-                    } catch (err: any) {
-                      Alert.alert("Erro", `Não foi possível eliminar o cliente: ${err.message}`);
-                    } finally {
-                      setIsLoading(false);
-                    }
-                  }
-                }
-              ]
-            );
-          }
-        },
-        { text: "Cancelar", style: "cancel" }
-      ]
-    );
+  const confirmarEliminarCliente = () => {
+    if (Platform.OS === 'web') {
+      const confirmar = window.confirm(`Tem a certeza de que pretende eliminar permanentemente o cliente ${cliente?.nome}? Esta ação não pode ser desfeita e irá remover todo o seu histórico de visitas.`);
+      if (confirmar) {
+        executarEliminacaoCliente();
+      }
+    } else {
+      Alert.alert(
+        "Eliminar Cliente",
+        `Tem a certeza de que pretende eliminar permanentemente o cliente ${cliente?.nome}? Esta ação não pode ser desfeita e irá remover todo o seu histórico de visitas.`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Eliminar", style: "destructive", onPress: executarEliminacaoCliente }
+        ]
+      );
+    }
+  };
+
+  const executarEliminacaoCliente = async () => {
+    if (!cliente) return;
+    try {
+      setIsLoading(true);
+      
+      // Eliminar agendamentos associados
+      await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('cliente_id', cliente.id);
+
+      // Eliminar o cliente
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', cliente.id);
+        
+      if (error) throw error;
+      
+      Alert.alert("Sucesso", "Cliente eliminado com sucesso.");
+      onBackClick();
+    } catch (err: any) {
+      Alert.alert("Erro", `Não foi possível eliminar o cliente: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Total Gasto acumulado
@@ -358,7 +351,10 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <ScrollView 
-          style={[styles.scrollView, Platform.OS === 'web' && ({ height: 'calc(100vh - 64px)' } as any)]}
+          style={[
+            styles.scrollView, 
+            scrollViewHeight ? { height: scrollViewHeight } : null
+          ]}
           contentContainerStyle={styles.scrollContent} 
           keyboardShouldPersistTaps="handled"
         >
@@ -660,6 +656,48 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
         </View>
       )}
+
+      {/* Modal de Opções do Cliente (Editar/Eliminar) */}
+      {showOptionsModal && (
+        <View style={styles.customModalOverlay}>
+          <TouchableOpacity 
+            style={styles.customModalCloseArea} 
+            activeOpacity={1} 
+            onPress={() => setShowOptionsModal(false)}
+          />
+          <View style={styles.optionsModalContent}>
+            <Text style={styles.modalTitle}>Opções do Cliente</Text>
+            <Text style={styles.modalSubTitle}>Escolha a ação que pretende efetuar:</Text>
+            
+            <TouchableOpacity 
+              style={styles.modalOptionBtn}
+              onPress={() => {
+                setShowOptionsModal(false);
+                navigation?.navigate('NovoCliente', { cliente: cliente });
+              }}
+            >
+              <Text style={styles.modalOptionText}>Editar Cliente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modalOptionBtn, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setShowOptionsModal(false);
+                confirmarEliminarCliente();
+              }}
+            >
+              <Text style={[styles.modalOptionText, { color: COLORS.status.cancelado.text }]}>Eliminar Cliente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.modalCancelBtn}
+              onPress={() => setShowOptionsModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -668,8 +706,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    height: (Platform.OS === 'web' ? '100vh' : 'auto') as any,
-    overflow: (Platform.OS === 'web' ? 'hidden' : 'visible') as any,
   },
   scrollView: {
     flex: 1,
@@ -1156,5 +1192,83 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: TYPOGRAPHY.fontFamily.sans,
     color: COLORS.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  customModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 9999,
+  },
+  customModalCloseArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  optionsModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  modalSubTitle: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textSecondary,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  modalOptionBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    alignItems: 'center',
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.primary,
+  },
+  modalCancelBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    marginTop: 12,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
   },
 });

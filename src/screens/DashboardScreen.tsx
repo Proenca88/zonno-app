@@ -13,6 +13,7 @@ import {
   Platform,
   Alert,
   Linking,
+  Modal,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -37,6 +38,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [modalAgendamentoSelecionado, setModalAgendamentoSelecionado] = useState<Agendamento | null>(null);
   
   // Estados para navegação de data e hora atual
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
@@ -102,45 +104,48 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   };
 
   const handleAgendamentoClick = (ag: Agendamento) => {
-    const cliente = clientes.find(c => c.id === ag.cliente_id);
-    const servico = servicos.find(s => s.id === ag.servico_id);
-    const nomeCliente = cliente?.nome || 'Cliente Desconhecido';
-    const nomeServico = servico?.nome || 'Serviço';
-    
-    const statusAtual = ag.status.toLowerCase();
-    
-    const botoes = [
-      statusAtual === 'confirmado' ? {
-        text: "Colocar Em Espera",
-        onPress: () => atualizarEstadoAgendamento(ag.id, 'pendente')
-      } : {
-        text: "Confirmar Marcação",
-        onPress: () => atualizarEstadoAgendamento(ag.id, 'confirmado')
-      },
-      {
-        text: "Concluir Marcação",
-        onPress: () => atualizarEstadoAgendamento(ag.id, 'concluido')
-      },
-      {
-        text: "Cancelar Marcação",
-        onPress: () => atualizarEstadoAgendamento(ag.id, 'cancelado')
-      },
-      {
-        text: "Eliminar Marcação",
-        style: "destructive" as const,
-        onPress: () => confirmarEliminarAgendamento(ag.id)
-      },
-      {
-        text: "Cancelar",
-        style: "cancel" as const
-      }
-    ];
+    setModalAgendamentoSelecionado(ag);
+  };
 
-    Alert.alert(
-      "Gerir Marcação",
-      `Marcação de ${nomeCliente}\nServiço: ${nomeServico}\nHora: ${formatarHora(ag.hora)}\nEstado atual: ${ag.status.toUpperCase()}`,
-      botoes
-    );
+  const confirmarEliminarAgendamento = (id: string) => {
+    if (Platform.OS === 'web') {
+      const confirmar = window.confirm("Tem a certeza de que pretende eliminar permanentemente esta marcação?");
+      if (confirmar) {
+        executarEliminacaoAgendamento(id);
+      }
+    } else {
+      Alert.alert(
+        "Eliminar Marcação",
+        "Tem a certeza de que pretende eliminar permanentemente esta marcação?",
+        [
+          { text: "Não", style: "cancel" },
+          { 
+            text: "Sim, Eliminar", 
+            style: "destructive",
+            onPress: () => executarEliminacaoAgendamento(id)
+          }
+        ]
+      );
+    }
+  };
+
+  const executarEliminacaoAgendamento = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchData();
+      Alert.alert("Sucesso", "Marcação eliminada com sucesso!");
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível eliminar: ${e.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const atualizarEstadoAgendamento = async (id: string, novoStatus: string) => {
@@ -160,38 +165,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const confirmarEliminarAgendamento = (id: string) => {
-    Alert.alert(
-      "Eliminar Marcação",
-      "Tem a certeza de que pretende eliminar permanentemente esta marcação?",
-      [
-        { text: "Não", style: "cancel" },
-        { 
-          text: "Sim, Eliminar", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              const { error } = await supabase
-                .from('agendamentos')
-                .delete()
-                .eq('id', id);
-
-              if (error) throw error;
-              
-              await fetchData();
-              Alert.alert("Sucesso", "Marcação eliminada com sucesso!");
-            } catch (e: any) {
-              Alert.alert("Erro", `Não foi possível eliminar: ${e.message}`);
-            } finally {
-              setIsLoading(false);
-            }
-          }
-        }
-      ]
-    );
   };
 
   const navegarHoje = () => {
@@ -574,6 +547,88 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       >
         <Plus size={24} color={COLORS.surface} weight="bold" />
       </TouchableOpacity>
+
+      {/* Modal de Opções do Agendamento */}
+      {modalAgendamentoSelecionado !== null && (
+        <View style={styles.customModalOverlay}>
+          <TouchableOpacity 
+            style={styles.customModalCloseArea} 
+            activeOpacity={1} 
+            onPress={() => setModalAgendamentoSelecionado(null)}
+          />
+          <View style={styles.optionsModalContent}>
+            <Text style={styles.modalTitle}>Gerir Marcação</Text>
+            {modalAgendamentoSelecionado && (() => {
+              const ag = modalAgendamentoSelecionado;
+              const cl = clientes.find(c => c.id === ag.cliente_id);
+              const sv = servicos.find(s => s.id === ag.servico_id);
+              const statusAtual = ag.status.toLowerCase();
+              
+              return (
+                <>
+                  <Text style={styles.modalSubTitle}>
+                    Cliente: {cl?.nome || 'Desconhecido'}{'\n'}
+                    Serviço: {sv?.nome || 'Serviço'} • {formatarHora(ag.hora)}{'\n'}
+                    Estado atual: {ag.status.toUpperCase()}
+                  </Text>
+                  
+                  <TouchableOpacity 
+                    style={styles.modalOptionBtn}
+                    onPress={() => {
+                      const novoStatus = statusAtual === 'confirmado' ? 'pendente' : 'confirmado';
+                      atualizarEstadoAgendamento(ag.id, novoStatus);
+                      setModalAgendamentoSelecionado(null);
+                    }}
+                  >
+                    <Text style={styles.modalOptionText}>
+                      {statusAtual === 'confirmado' ? 'Colocar Em Espera' : 'Confirmar Marcação'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.modalOptionBtn}
+                    onPress={() => {
+                      atualizarEstadoAgendamento(ag.id, 'concluido');
+                      setModalAgendamentoSelecionado(null);
+                    }}
+                  >
+                    <Text style={styles.modalOptionText}>Concluir Marcação</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.modalOptionBtn}
+                    onPress={() => {
+                      atualizarEstadoAgendamento(ag.id, 'cancelado');
+                      setModalAgendamentoSelecionado(null);
+                    }}
+                  >
+                    <Text style={styles.modalOptionText}>Cancelar Marcação</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.modalOptionBtn, { borderBottomWidth: 0 }]}
+                    onPress={() => {
+                      setModalAgendamentoSelecionado(null);
+                      confirmarEliminarAgendamento(ag.id);
+                    }}
+                  >
+                    <Text style={[styles.modalOptionText, { color: COLORS.status.cancelado.text }]}>
+                      Eliminar Marcação
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+
+            <TouchableOpacity 
+              style={styles.modalCancelBtn}
+              onPress={() => setModalAgendamentoSelecionado(null)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -947,5 +1002,82 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  customModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 9999,
+  },
+  customModalCloseArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  optionsModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.primary,
+    marginBottom: 8,
+  },
+  modalSubTitle: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textSecondary,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  modalOptionBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    alignItems: 'center',
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.primary,
+  },
+  modalCancelBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    marginTop: 12,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
+  },
 });
-
