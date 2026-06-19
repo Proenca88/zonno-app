@@ -12,11 +12,12 @@ import {
   TextInput,
   Alert,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Servico, Categoria, Usuario, Empresa } from '../types';
-import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk, Scissors, PaintBrush, Stethoscope } from 'phosphor-react-native';
+import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk, Scissors, PaintBrush, Stethoscope, PencilSimple, X } from 'phosphor-react-native';
 
 interface ServicosScreenProps {
   currentUser: Usuario;
@@ -39,6 +40,100 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
   const [formCategoriaId, setFormCategoriaId] = useState('');
   const [formCor, setFormCor] = useState('#af4f57');
   const [isSaving, setIsSaving] = useState(false);
+
+  const [showGerirCategoriasModal, setShowGerirCategoriasModal] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
+  const [editingCategoriaId, setEditingCategoriaId] = useState<string | null>(null);
+  const [editingCategoriaNome, setEditingCategoriaNome] = useState('');
+  const [isCategoryActionLoading, setIsCategoryActionLoading] = useState(false);
+
+  const handleAddCategoria = async () => {
+    if (!novaCategoriaNome.trim()) {
+      Alert.alert("Erro", "O nome da categoria não pode estar vazio.");
+      return;
+    }
+    try {
+      setIsCategoryActionLoading(true);
+      const { error } = await supabase
+        .from('categorias')
+        .insert([{ empresa_id: currentUser.empresa_id, nome: novaCategoriaNome.trim() }]);
+      if (error) throw error;
+      setNovaCategoriaNome('');
+      await fetchData();
+      Alert.alert("Sucesso", "Categoria adicionada com sucesso!");
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível adicionar a categoria: ${e.message}`);
+    } finally {
+      setIsCategoryActionLoading(false);
+    }
+  };
+
+  const handleSaveCategoriaEdit = async (catId: string) => {
+    if (!editingCategoriaNome.trim()) {
+      Alert.alert("Erro", "O nome da categoria não pode estar vazio.");
+      return;
+    }
+    try {
+      setIsCategoryActionLoading(true);
+      const { error } = await supabase
+        .from('categorias')
+        .update({ nome: editingCategoriaNome.trim() })
+        .eq('id', catId);
+      if (error) throw error;
+      setEditingCategoriaId(null);
+      setEditingCategoriaNome('');
+      await fetchData();
+      Alert.alert("Sucesso", "Categoria atualizada com sucesso!");
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível atualizar a categoria: ${e.message}`);
+    } finally {
+      setIsCategoryActionLoading(false);
+    }
+  };
+
+  const handleDeleteCategoria = async (catId: string, catNome: string) => {
+    const servicosNaCategoria = servicos.filter((s) => s.categoria_id === catId);
+    if (servicosNaCategoria.length > 0) {
+      Alert.alert(
+        "Não é possível eliminar",
+        `Existem ${servicosNaCategoria.length} serviços associados a esta categoria. Mude ou elimine estes serviços primeiro.`
+      );
+      return;
+    }
+
+    const deletar = async () => {
+      try {
+        setIsCategoryActionLoading(true);
+        const { error } = await supabase
+          .from('categorias')
+          .delete()
+          .eq('id', catId);
+        if (error) throw error;
+        await fetchData();
+        Alert.alert("Sucesso", "Categoria eliminada com sucesso!");
+      } catch (e: any) {
+        Alert.alert("Erro", `Não foi possível eliminar a categoria: ${e.message}`);
+      } finally {
+        setIsCategoryActionLoading(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmar = window.confirm(`Tem a certeza de que pretende eliminar a categoria "${catNome}"?`);
+      if (confirmar) {
+        deletar();
+      }
+    } else {
+      Alert.alert(
+        "Eliminar Categoria",
+        `Tem a certeza de que pretende eliminar a categoria "${catNome}"?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Eliminar", style: "destructive", onPress: deletar }
+        ]
+      );
+    }
+  };
 
   const handleNovoServico = () => {
     setEditingServico(null);
@@ -327,11 +422,14 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
             activeOpacity={1} 
             onPress={() => setShowFormModal(false)}
           />
-          <View style={styles.formModalContent}>
-            <Text style={styles.modalTitle}>
-              {editingServico ? 'Editar Serviço' : 'Novo Serviço'}
-            </Text>
-            
+          <View style={[styles.formModalContent, { maxHeight: '90%', padding: 0, overflow: 'hidden' }]}>
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+              <Text style={styles.modalTitle}>
+                {editingServico ? 'Editar Serviço' : 'Novo Serviço'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, overflow: Platform.OS === 'web' ? 'scroll' : 'visible' }}>
+            <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nome do Serviço</Text>
               <TextInput
@@ -370,42 +468,58 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Categoria</Text>
-              <View style={styles.categoriesRow}>
-                {categorias.map((cat) => {
-                  const isSelected = formCategoriaId === cat.id;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={[
-                        styles.categoryOption,
-                        isSelected && styles.categoryOptionActive
-                      ]}
-                      onPress={() => setFormCategoriaId(cat.id)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[
-                        styles.categoryOptionText,
-                        isSelected && styles.categoryOptionTextActive
-                      ]}>
-                        {cat.nome}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={styles.label}>Categoria</Text>
+                <TouchableOpacity 
+                  onPress={() => setShowGerirCategoriasModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.primary }}>
+                    + Gerir Categorias
+                  </Text>
+                </TouchableOpacity>
               </View>
+              {categorias.length === 0 ? (
+                <View style={{ backgroundColor: COLORS.inputBackground, borderRadius: 8, padding: 12 }}>
+                  <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 13, color: COLORS.textSecondary }}>Sem categorias criadas ainda.</Text>
+                </View>
+              ) : (
+                <View style={styles.categoriesRow}>
+                  {categorias.map((cat) => {
+                    const isSelected = formCategoriaId === cat.id;
+                    return (
+                      <TouchableOpacity
+                        key={cat.id}
+                        style={[
+                          styles.categoryOption,
+                          isSelected && styles.categoryOptionActive
+                        ]}
+                        onPress={() => setFormCategoriaId(cat.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[
+                          styles.categoryOptionText,
+                          isSelected && styles.categoryOptionTextActive
+                        ]}>
+                          {cat.nome}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Cor do Serviço</Text>
               <View style={styles.colorPalette}>
                 {[
-                  '#af4f57', // Vinho/Rosa
-                  '#1e3a8a', // Azul
-                  '#15803d', // Verde
-                  '#b45309', // Dourado
-                  '#6b21a8', // Roxo
-                  '#111827', // Preto
+                  '#af4f57',
+                  '#1e3a8a',
+                  '#15803d',
+                  '#b45309',
+                  '#6b21a8',
+                  '#111827',
                 ].map((color) => (
                   <TouchableOpacity
                     key={color}
@@ -459,6 +573,133 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
             >
               <Text style={styles.modalCancelText}>Cancelar</Text>
             </TouchableOpacity>
+            </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Gestão de Categorias */}
+      <Modal
+        visible={showGerirCategoriasModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowGerirCategoriasModal(false)}
+      >
+        <View style={styles.customModalOverlay}>
+          <TouchableOpacity 
+            style={styles.customModalCloseArea} 
+            activeOpacity={1} 
+            onPress={() => setShowGerirCategoriasModal(false)}
+          />
+          <View style={[styles.formModalContent, { maxHeight: '80%', padding: 0, overflow: 'hidden' }]}>
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.modalTitle}>Gerir Categorias</Text>
+              <TouchableOpacity onPress={() => setShowGerirCategoriasModal(false)}>
+                <X size={20} color={COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 24 }}>
+              {/* Form de Nova Categoria */}
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, height: 44 }]}
+                  placeholder="Nova categoria (ex: Massagens)"
+                  placeholderTextColor="#9ca3af"
+                  value={novaCategoriaNome}
+                  onChangeText={setNovaCategoriaNome}
+                  editable={!isCategoryActionLoading}
+                />
+                <TouchableOpacity
+                  style={[styles.btnSave, { height: 44, paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center', marginTop: 0 }]}
+                  onPress={handleAddCategoria}
+                  disabled={isCategoryActionLoading}
+                >
+                  <Text style={[styles.btnSaveText, { fontSize: 13 }]}>+ Add</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Lista de Categorias */}
+              <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={true}>
+                {categorias.length === 0 ? (
+                  <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', marginTop: 20 }}>
+                    Nenhuma categoria registada.
+                  </Text>
+                ) : (
+                  categorias.map((cat) => {
+                    const isEditing = editingCategoriaId === cat.id;
+                    return (
+                      <View 
+                        key={cat.id} 
+                        style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          paddingVertical: 8, 
+                          borderBottomWidth: 1, 
+                          borderBottomColor: COLORS.border,
+                          gap: 8
+                        }}
+                      >
+                        {isEditing ? (
+                          <TextInput
+                            style={[styles.input, { flex: 1, height: 36, paddingHorizontal: 8, fontSize: 13 }]}
+                            value={editingCategoriaNome}
+                            onChangeText={setEditingCategoriaNome}
+                            autoFocus
+                          />
+                        ) : (
+                          <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: COLORS.textPrimary }}>
+                            {cat.nome}
+                          </Text>
+                        )}
+
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          {isEditing ? (
+                            <>
+                              <TouchableOpacity 
+                                style={{ padding: 8, backgroundColor: COLORS.primary + '15', borderRadius: 6 }}
+                                onPress={() => handleSaveCategoriaEdit(cat.id)}
+                              >
+                                <FloppyDisk size={16} color={COLORS.primary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity 
+                                style={{ padding: 8, backgroundColor: COLORS.inputBackground, borderRadius: 6 }}
+                                onPress={() => {
+                                  setEditingCategoriaId(null);
+                                  setEditingCategoriaNome('');
+                                }}
+                              >
+                                <X size={16} color={COLORS.textSecondary} />
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <>
+                              <TouchableOpacity 
+                                style={{ padding: 8, backgroundColor: COLORS.inputBackground, borderRadius: 6 }}
+                                onPress={() => {
+                                  setEditingCategoriaId(cat.id);
+                                  setEditingCategoriaNome(cat.nome);
+                                }}
+                              >
+                                <PencilSimple size={16} color={COLORS.textPrimary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity 
+                                style={{ padding: 8, backgroundColor: COLORS.status.cancelado.bg, borderRadius: 6 }}
+                                onPress={() => handleDeleteCategoria(cat.id, cat.nome)}
+                              >
+                                <Trash size={16} color={COLORS.status.cancelado.text} />
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </View>
           </View>
         </View>
       </Modal>
@@ -741,8 +982,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   colorCircleActive: {
+    borderWidth: 3,
     borderColor: COLORS.textPrimary,
-    transform: [{ scale: 1.1 }],
   },
   modalActions: {
     flexDirection: 'row',

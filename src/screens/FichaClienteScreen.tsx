@@ -13,6 +13,7 @@ import {
   Linking,
   Modal,
   Image,
+  ScrollView,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -406,14 +407,12 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <ActivityIndicator color={COLORS.primary} size="large" />
         </View>
       ) : cliente ? (
-        <FlatList
-          data={[]}
-          keyExtractor={() => 'key'}
-          renderItem={null}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          ListHeaderComponent={<>
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
@@ -714,8 +713,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               <Text style={styles.btnEditText}>EDITAR CLIENTE</Text>
             </TouchableOpacity>
           </View>
-          </>}
-        />
+        </ScrollView>
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
@@ -838,6 +836,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    ...Platform.select({
+      web: {
+        overflowY: 'auto' as any,
+      }
+    })
   },
   header: {
     height: 64,

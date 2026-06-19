@@ -58,6 +58,7 @@ export interface Agendamento {
   confirmado?: boolean;
   created_at?: string;
   servicos_extra?: any; // Múltiplos serviços adicionais
+  metodo_pagamento?: string | null;
 }
 
 export interface Categoria {

@@ -50,8 +50,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [fabOpen, setFabOpen] = useState(false);
   const [showVendaModal, setShowVendaModal] = useState(false);
   const [vendaClienteId, setVendaClienteId] = useState('');
+  const [vendaClienteSearch, setVendaClienteSearch] = useState('');
   const [vendaServicosIds, setVendaServicosIds] = useState<string[]>([]);
   const [vendaValorManual, setVendaValorManual] = useState('');
+  const [vendaMetodoPagamento, setVendaMetodoPagamento] = useState<'dinheiro' | 'mbway' | 'cartao'>('dinheiro');
   const [isSavingVenda, setIsSavingVenda] = useState(false);
 
   // Calcular total automático dos serviços selecionados
@@ -67,6 +69,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     );
   };
+
+  // Clientes filtrados pela pesquisa
+  const clientesFiltrados = clientes.filter(cl =>
+    vendaClienteSearch.trim() === '' ? true :
+    cl.nome.toLowerCase().includes(vendaClienteSearch.toLowerCase()) ||
+    (cl.telemovel && cl.telemovel.includes(vendaClienteSearch))
+  ).slice(0, 6);
 
   const fetchData = async () => {
     try {
@@ -582,8 +591,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             onPress={() => {
               setFabOpen(false);
               setVendaClienteId('');
+              setVendaClienteSearch('');
               setVendaServicosIds([]);
               setVendaValorManual('');
+              setVendaMetodoPagamento('dinheiro');
               setShowVendaModal(true);
             }}
             activeOpacity={0.85}
@@ -802,48 +813,109 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   keyboardType="numeric"
                 />
 
-                {/* Cliente - Lista vertical */}
+                {/* Cliente - Campo de pesquisa + dropdown */}
                 <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Cliente (opcional)</Text>
-                <View style={{ gap: 6, marginBottom: 8 }}>
-                  {/* Opção: sem cliente */}
-                  <TouchableOpacity
-                    style={[
-                      { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 10 },
-                      vendaClienteId === '' && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
-                    ]}
-                    onPress={() => setVendaClienteId('')}
-                  >
-                    <View style={[
-                      { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
-                      vendaClienteId === '' && { borderColor: COLORS.primary }
-                    ]}>
-                      {vendaClienteId === '' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />}
-                    </View>
-                    <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: vendaClienteId === '' ? COLORS.primary : COLORS.textSecondary }}>Sem cliente específico</Text>
-                  </TouchableOpacity>
+                
+                {/* Sem cliente */}
+                <TouchableOpacity
+                  style={[
+                    { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 10, marginBottom: 8 },
+                    vendaClienteId === '' && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
+                  ]}
+                  onPress={() => { setVendaClienteId(''); setVendaClienteSearch(''); }}
+                >
+                  <View style={[
+                    { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+                    vendaClienteId === '' && { borderColor: COLORS.primary }
+                  ]}>
+                    {vendaClienteId === '' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />}
+                  </View>
+                  <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: vendaClienteId === '' ? COLORS.primary : COLORS.textSecondary }}>Sem cliente específico</Text>
+                </TouchableOpacity>
 
-                  {/* Lista de clientes */}
-                  {clientes.slice(0, 10).map(cl => (
-                    <TouchableOpacity
-                      key={cl.id}
-                      style={[
-                        { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 10 },
-                        vendaClienteId === cl.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
-                      ]}
-                      onPress={() => setVendaClienteId(cl.id)}
-                    >
-                      <View style={[
-                        { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
-                        vendaClienteId === cl.id && { borderColor: COLORS.primary }
-                      ]}>
-                        {vendaClienteId === cl.id && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />}
+                {/* Campo de pesquisa */}
+                <TextInput
+                  style={{
+                    backgroundColor: COLORS.inputBackground,
+                    borderWidth: 1,
+                    borderColor: vendaClienteSearch ? COLORS.primary : COLORS.border,
+                    borderRadius: 10,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    fontFamily: TYPOGRAPHY.fontFamily.sans,
+                    fontSize: 14,
+                    color: COLORS.textPrimary,
+                    marginBottom: vendaClienteSearch ? 6 : 0,
+                  }}
+                  value={vendaClienteSearch}
+                  onChangeText={setVendaClienteSearch}
+                  placeholder="Pesquisar cliente por nome ou telemovel..."
+                  placeholderTextColor={COLORS.textSecondary}
+                />
+
+                {/* Dropdown de resultados */}
+                {vendaClienteSearch.trim() !== '' && (
+                  <View style={{ borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden', marginBottom: 8 }}>
+                    {clientesFiltrados.length === 0 ? (
+                      <View style={{ padding: 12 }}>
+                        <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 13, color: COLORS.textSecondary }}>Nenhum cliente encontrado</Text>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 14, color: vendaClienteId === cl.id ? COLORS.primary : COLORS.textPrimary }}>{cl.nome}</Text>
-                        {cl.telemovel ? <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 12, color: COLORS.textSecondary }}>{cl.telemovel}</Text> : null}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                    ) : clientesFiltrados.map((cl, idx) => (
+                      <TouchableOpacity
+                        key={cl.id}
+                        style={[
+                          { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10, backgroundColor: vendaClienteId === cl.id ? COLORS.primary + '08' : COLORS.surface },
+                          idx < clientesFiltrados.length - 1 && { borderBottomWidth: 1, borderBottomColor: COLORS.border }
+                        ]}
+                        onPress={() => { setVendaClienteId(cl.id); setVendaClienteSearch(cl.nome); }}
+                      >
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.inputBackground, justifyContent: 'center', alignItems: 'center' }}>
+                          <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.primary }}>
+                            {cl.nome.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 14, color: vendaClienteId === cl.id ? COLORS.primary : COLORS.textPrimary }}>{cl.nome}</Text>
+                          {cl.telemovel ? <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 12, color: COLORS.textSecondary }}>{cl.telemovel}</Text> : null}
+                        </View>
+                        {vendaClienteId === cl.id && <Text style={{ color: COLORS.primary, fontSize: 16 }}>✓</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Mostrar cliente selecionado */}
+                {vendaClienteId !== '' && !vendaClienteSearch && (() => {
+                  const cl = clientes.find(c => c.id === vendaClienteId);
+                  return cl ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 8, backgroundColor: COLORS.primary + '10', marginBottom: 4, gap: 8 }}>
+                      <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 13, color: COLORS.primary, flex: 1 }}>✓ {cl.nome}</Text>
+                      <TouchableOpacity onPress={() => setVendaClienteId('')}>
+                        <Text style={{ color: COLORS.textSecondary, fontSize: 18 }}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null;
+                })()}
+
+                {/* Método de Pagamento */}
+                <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 20, marginBottom: 10 }}>Método de Pagamento</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {(['dinheiro', 'mbway', 'cartao'] as const).map(metodo => {
+                    const labels: Record<string, string> = { dinheiro: '💵 Dinheiro', mbway: '📱 MBWay', cartao: '💳 Cartão' };
+                    const isActive = vendaMetodoPagamento === metodo;
+                    return (
+                      <TouchableOpacity
+                        key={metodo}
+                        style={[
+                          { flex: 1, paddingVertical: 10, paddingHorizontal: 6, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, alignItems: 'center' },
+                          isActive && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
+                        ]}
+                        onPress={() => setVendaMetodoPagamento(metodo)}
+                      >
+                        <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: isActive ? COLORS.primary : COLORS.textSecondary, textAlign: 'center' }}>{labels[metodo]}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
               </View>
@@ -891,6 +963,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       hora: horaStr,
                       status: 'concluido',
                       valor_pago: valorFinal,
+                      metodo_pagamento: vendaMetodoPagamento,
                       observacoes: 'Venda direta registada',
                     }]);
                     if (error) throw error;
@@ -898,7 +971,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     setShowVendaModal(false);
                     setVendaServicosIds([]);
                     setVendaClienteId('');
+                    setVendaClienteSearch('');
                     setVendaValorManual('');
+                    setVendaMetodoPagamento('dinheiro');
                     fetchData();
                   } catch (e: any) {
                     Alert.alert('Erro', `Não foi possível registar a venda: ${e.message}`);
