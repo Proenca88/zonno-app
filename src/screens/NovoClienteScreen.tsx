@@ -10,9 +10,9 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -43,6 +43,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
   onSuccess,
   clienteEdicao,
 }) => {
+  const { height } = useWindowDimensions();
   const [nome, setNome] = useState('');
   const [telemovel, setTelemovel] = useState('');
   const [email, setEmail] = useState('');
@@ -387,7 +388,10 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
         </View>
 
         <ScrollView
-          style={{ flex: 1 }}
+          style={[
+            { flex: 1 },
+            Platform.OS === 'web' ? { height: height - 64, overflowY: 'auto' as any } : {}
+          ]}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"

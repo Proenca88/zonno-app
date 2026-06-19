@@ -408,7 +408,10 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <ScrollView
-          style={{ flex: 1 }}
+          style={[
+            { flex: 1 },
+            Platform.OS === 'web' ? { height: height - 64, overflowY: 'auto' as any } : {}
+          ]}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
