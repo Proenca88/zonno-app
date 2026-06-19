@@ -832,10 +832,12 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    height: '100%',
     backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
+    height: '100%',
     ...Platform.select({
       web: {
         overflowY: 'auto' as any,
@@ -877,9 +879,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 48,
+    paddingBottom: 80,
   },
   profileHeader: {
     alignItems: 'center',

@@ -71,7 +71,7 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
           .from('vouchers')
           .select('*')
           .eq('empresa_id', currentUser.empresa_id)
-          .order('created_at', { ascending: false }),
+          .order('data_criacao', { ascending: false }),
         supabase
           .from('servicos')
           .select('*')
