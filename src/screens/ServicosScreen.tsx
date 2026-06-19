@@ -19,17 +19,48 @@ import { supabase } from '../remote/supabase';
 import { Servico, Categoria, Usuario, Empresa } from '../types';
 import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk, Scissors, PaintBrush, Stethoscope, PencilSimple, X } from 'phosphor-react-native';
 
-const COLOR_OPTIONS = [
-  { key: 'primary', hex: COLORS.primary, label: 'Marca' },
-  { key: 'secondary', hex: '#6b21a8', label: 'Roxo' },
-  { key: 'green', hex: '#15803d', label: 'Verde' },
-  { key: 'blue', hex: '#1e3a8a', label: 'Azul' },
-  { key: 'orange', hex: '#b45309', label: 'Laranja' },
+const getPrimaryColorByNicho = (nicho?: string | null) => {
+  switch (nicho) {
+    case 'barbearia':
+      return '#64748b'; // Cinza/Azulado
+    case 'clinica':
+      return '#0ea5e9'; // Azul Celeste
+    case 'cabeleireiro':
+    case 'tattoo':
+      return '#a855f7'; // Roxo/Violeta
+    case 'estetica':
+    default:
+      return '#dc7a65'; // Rosa Salmão
+  }
+};
+
+const getPrimaryLabelByNicho = (nicho?: string | null) => {
+  switch (nicho) {
+    case 'barbearia':
+      return 'Cinza';
+    case 'clinica':
+      return 'Azul Celeste';
+    case 'cabeleireiro':
+    case 'tattoo':
+      return 'Roxo';
+    case 'estetica':
+    default:
+      return 'Rosa';
+  }
+};
+
+const getCategoryColorOptions = (nicho?: string | null) => [
+  { key: 'primary', hex: getPrimaryColorByNicho(nicho), label: getPrimaryLabelByNicho(nicho) },
+  { key: 'secondary', hex: '#8b5cf6', label: 'Roxo' },
+  { key: 'green', hex: '#10b981', label: 'Verde' },
+  { key: 'blue', hex: '#3b82f6', label: 'Azul' },
+  { key: 'orange', hex: '#f97316', label: 'Laranja' },
 ];
 
-const mapColorKeyToHex = (colorKey?: string | null) => {
-  const found = COLOR_OPTIONS.find(opt => opt.key === colorKey);
-  return found ? found.hex : COLORS.primary;
+const mapColorKeyToHex = (colorKey?: string | null, nicho?: string | null) => {
+  const options = getCategoryColorOptions(nicho);
+  const found = options.find(opt => opt.key === colorKey);
+  return found ? found.hex : getPrimaryColorByNicho(nicho);
 };
 
 interface ServicosScreenProps {
@@ -163,8 +194,9 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
     setFormNome('');
     setFormPreco('');
     setFormDuracao('30');
-    setFormCategoria(categorias[0]?.nome || '');
-    setFormCor('primary');
+    const defaultCat = categorias[0];
+    setFormCategoria(defaultCat?.nome || '');
+    setFormCor(defaultCat?.cor || 'primary');
     setShowFormModal(true);
   };
 
@@ -173,8 +205,10 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
     setFormNome(servico.nome);
     setFormPreco(String(servico.preco));
     setFormDuracao(String(servico.duracao));
-    setFormCategoria(servico.categoria || categorias[0]?.nome || '');
-    setFormCor(servico.cor || 'primary');
+    const cat = categorias.find((c) => c.nome === servico.categoria);
+    const defaultCat = categorias[0];
+    setFormCategoria(servico.categoria || defaultCat?.nome || '');
+    setFormCor(cat?.cor || servico.cor || defaultCat?.cor || 'primary');
     setShowFormModal(true);
   };
 
@@ -306,7 +340,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
 
   const renderService = ({ item }: { item: Servico }) => {
     const categoria = categorias.find((c) => c.nome === item.categoria);
-    const serviceColor = mapColorKeyToHex(item.cor);
+    const serviceColor = mapColorKeyToHex(categoria?.cor || item.cor || 'primary', empresa?.nicho);
 
     const getNichoIcon = () => {
       const nicho = empresa?.nicho;
@@ -517,7 +551,10 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                           styles.categoryOption,
                           isSelected && styles.categoryOptionActive
                         ]}
-                        onPress={() => setFormCategoria(cat.nome)}
+                        onPress={() => {
+                          setFormCategoria(cat.nome);
+                          setFormCor(cat.cor || 'primary');
+                        }}
                         activeOpacity={0.8}
                       >
                         <Text style={[
@@ -534,20 +571,17 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Cor do Serviço</Text>
-              <View style={styles.colorPalette}>
-                {COLOR_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[
-                      styles.colorCircle,
-                      { backgroundColor: opt.hex },
-                      formCor === opt.key && styles.colorCircleActive,
-                    ]}
-                    onPress={() => setFormCor(opt.key)}
-                    activeOpacity={0.8}
-                  />
-                ))}
+              <Text style={styles.label}>Cor do Serviço (Herdada da Categoria)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 10 }}>
+                <View 
+                  style={[
+                    styles.colorCircle, 
+                    { backgroundColor: mapColorKeyToHex(formCor, empresa?.nicho), borderWidth: 0 }
+                  ]} 
+                />
+                <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 13, color: COLORS.textSecondary }}>
+                  A cor é vinculada automaticamente à categoria selecionada.
+                </Text>
               </View>
             </View>
 
@@ -640,7 +674,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                 {/* Seletor de Cor da Categoria */}
                 <Text style={[styles.label, { fontSize: 10, marginBottom: 4 }]}>Cor da Categoria</Text>
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                  {COLOR_OPTIONS.map((opt) => (
+                  {getCategoryColorOptions(empresa?.nicho).map((opt) => (
                     <TouchableOpacity
                       key={opt.key}
                       style={[
@@ -686,7 +720,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                               autoFocus
                             />
                             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 4 }}>
-                              {COLOR_OPTIONS.map((opt) => (
+                              {getCategoryColorOptions(empresa?.nicho).map((opt) => (
                                 <TouchableOpacity
                                   key={opt.key}
                                   style={[
@@ -702,7 +736,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                           </View>
                         ) : (
                           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: mapColorKeyToHex(cat.cor) }} />
+                            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: mapColorKeyToHex(cat.cor, empresa?.nicho) }} />
                             <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: COLORS.textPrimary }}>
                               {cat.nome}
                             </Text>
