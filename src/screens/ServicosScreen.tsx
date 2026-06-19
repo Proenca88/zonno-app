@@ -16,7 +16,7 @@ import {
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Servico, Categoria, Usuario, Empresa } from '../types';
-import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk } from 'phosphor-react-native';
+import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk, Scissors, PaintBrush, Stethoscope } from 'phosphor-react-native';
 
 interface ServicosScreenProps {
   currentUser: Usuario;
@@ -190,6 +190,20 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
     const categoria = categorias.find((c) => c.id === item.categoria_id);
     const serviceColor = item.cor || COLORS.primary;
 
+    const getNichoIcon = () => {
+      const nicho = empresa?.nicho;
+      if (nicho === 'barbearia' || nicho === 'cabeleireiro') {
+        return Scissors;
+      } else if (nicho === 'tattoo') {
+        return PaintBrush;
+      } else if (nicho === 'clinica') {
+        return Stethoscope;
+      }
+      return Sparkle;
+    };
+
+    const IconComponent = getNichoIcon();
+
     return (
       <TouchableOpacity 
         style={styles.card}
@@ -198,7 +212,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
       >
         <View style={styles.cardMain}>
           <View style={[styles.iconContainer, { backgroundColor: `${serviceColor}15` }]}>
-            <Sparkle size={20} color={serviceColor} weight="bold" />
+            <IconComponent size={20} color={serviceColor} weight="bold" />
           </View>
           <View style={styles.infoContainer}>
             <Text style={styles.serviceName}>{item.nome}</Text>
