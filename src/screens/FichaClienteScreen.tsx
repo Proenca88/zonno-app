@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   Linking,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -333,6 +334,10 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       {/* TopBar */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
@@ -350,7 +355,6 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <ScrollView 
-          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent} 
           keyboardShouldPersistTaps="handled"
         >
@@ -652,6 +656,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
         </View>
       )}
+      </KeyboardAvoidingView>
 
       {/* Modal de Opções do Cliente (Editar/Eliminar) */}
       <Modal

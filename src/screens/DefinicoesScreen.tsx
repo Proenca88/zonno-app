@@ -23,12 +23,15 @@ import {
   FloppyDisk, 
   CaretRight, 
   Scissors, 
-  Heart, 
-  Pencil, 
+  FirstAidKit,
+  Pen,
+  FlowerLotus,
+  Barbell,
   DotsThree,
   Ticket,
   Gear,
-  Sparkle
+  Sparkle,
+  Crown
 } from 'phosphor-react-native';
 
 interface DefinicoesScreenProps {
@@ -72,6 +75,41 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
   const [emailNegocio, setEmailNegocio] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [statusSubscricao, setStatusSubscricao] = useState(empresaInicial?.status_subscricao || 'teste');
+
+  const calcularDiasTesteRestantes = () => {
+    if (!empresaInicial?.created_at) return 14;
+    const dataCriacao = new Date(empresaInicial.created_at);
+    const hoje = new Date();
+    const diffTime = Math.abs(hoje.getTime() - dataCriacao.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const restantes = 14 - diffDays;
+    return restantes > 0 ? restantes : 0;
+  };
+
+  const handleUpgradeEmpresa = async (plano: string) => {
+    try {
+      setIsSaving(true);
+      const { error } = await supabase
+        .from('empresas')
+        .update({ status_subscricao: 'ativo' })
+        .eq('id', currentUser.empresa_id);
+
+      if (error) throw error;
+
+      Alert.alert(
+        "Sucesso",
+        `Upgrade concluído com sucesso no plano ${plano}! Obrigado por confiar no Zonno.`
+      );
+      setStatusSubscricao('ativo');
+      setShowUpgradeModal(false);
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível processar o upgrade: ${e.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const [isLoading, setIsLoading] = useState(true);
 
   // Horários de funcionamento
@@ -245,6 +283,28 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
             <Text style={styles.pageSubtitle}>Gira as configurações do seu negócio e preferências.</Text>
           </View>
 
+          {/* Card de Subscrição/Período de Teste */}
+          {statusSubscricao === 'teste' && (
+            <View style={styles.subscriptionCard}>
+              <View style={styles.subscriptionHeader}>
+                <Sparkle size={20} color={COLORS.primary} weight="fill" />
+                <Text style={styles.subscriptionTitle}>Período de Teste Ativo</Text>
+              </View>
+              <Text style={styles.subscriptionText}>
+                A sua conta encontra-se no período de avaliação de 14 dias. Restam-lhe{' '}
+                <Text style={styles.daysHighlight}>{calcularDiasTesteRestantes()} dias</Text> para explorar
+                todas as ferramentas de gestão. Faça o upgrade agora para garantir acesso ilimitado.
+              </Text>
+              <TouchableOpacity 
+                style={styles.upgradeBtn}
+                onPress={() => setShowUpgradeModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.upgradeBtnText}>EFETUAR UPGRADE DA CONTA</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Secção: Perfil do Negócio */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -310,10 +370,10 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
             <View style={styles.bentoGrid}>
               {[
                 { id: 'barbearia', label: 'Barbearia', icon: Scissors },
-                { id: 'clinica', label: 'Clínica', icon: Heart },
-                { id: 'tattoo', label: 'Tatuagens', icon: Pencil },
-                { id: 'estetica', label: 'Estética', icon: Sparkle },
-                { id: 'pilates', label: 'Pilates', icon: Heart },
+                { id: 'clinica', label: 'Clínica', icon: FirstAidKit },
+                { id: 'tattoo', label: 'Tatuagens', icon: Pen },
+                { id: 'estetica', label: 'Estética', icon: FlowerLotus },
+                { id: 'pilates', label: 'Pilates', icon: Barbell },
                 { id: 'outros', label: 'Outro', icon: DotsThree }
               ].map((item) => {
                 const IconComponent = item.icon;
@@ -471,6 +531,60 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
             </>
           )}
         </TouchableOpacity>
+        {/* Modal de Upgrade de Conta */}
+        {showUpgradeModal && (
+          <View style={styles.customModalOverlay}>
+            <TouchableOpacity 
+              style={styles.customModalCloseArea} 
+              activeOpacity={1} 
+              onPress={() => setShowUpgradeModal(false)}
+            />
+            <View style={styles.upgradeModalContent}>
+              <View style={styles.upgradeHeader}>
+                <Crown size={32} color="#b45309" weight="fill" />
+                <Text style={styles.upgradeTitle}>Upgrade para Premium</Text>
+                <Text style={styles.upgradeSubTitle}>Escolha o plano que melhor se adapta ao seu negócio e garanta acesso ilimitado.</Text>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.planCard}
+                onPress={() => handleUpgradeEmpresa('Mensal')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.planInfo}>
+                  <Text style={styles.planName}>Plano Mensal</Text>
+                  <Text style={styles.planPrice}>29.90€<Text style={styles.planUnit}> / mês</Text></Text>
+                  <Text style={styles.planDesc}>Faturação mensal recorrente. Cancele quando quiser.</Text>
+                </View>
+                <CaretRight size={20} color={COLORS.primary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.planCard, styles.planCardRecommended]}
+                onPress={() => handleUpgradeEmpresa('Anual')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.recommendedBadge}>
+                  <Text style={styles.recommendedText}>MELHOR PREÇO</Text>
+                </View>
+                <View style={styles.planInfo}>
+                  <Text style={styles.planName}>Plano Anual</Text>
+                  <Text style={styles.planPrice}>249.00€<Text style={styles.planUnit}> / ano</Text></Text>
+                  <Text style={styles.planDesc}>Equivale a ~20.75€/mês. Poupe mais de 100€ por ano!</Text>
+                </View>
+                <CaretRight size={20} color={COLORS.primary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.modalCancelBtn}
+                onPress={() => setShowUpgradeModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -754,5 +868,170 @@ const styles = StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamily.sansBold,
     fontSize: 15,
     marginLeft: 8
+  },
+  subscriptionCard: {
+    backgroundColor: '#fdf4f5',
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#f9d5d8',
+  },
+  subscriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  subscriptionTitle: {
+    fontSize: 16,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.primary,
+  },
+  subscriptionText: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textPrimary,
+    lineHeight: 19,
+  },
+  daysHighlight: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.primary,
+  },
+  upgradeBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  upgradeBtnText: {
+    fontSize: 12,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.surface,
+    letterSpacing: 0.5,
+  },
+  customModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 9999,
+  },
+  customModalCloseArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  upgradeModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  upgradeHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  upgradeTitle: {
+    fontSize: 22,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.primary,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  upgradeSubTitle: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  planCard: {
+    width: '100%',
+    backgroundColor: COLORS.inputBackground + '40',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  planCardRecommended: {
+    borderColor: '#f9d5d8',
+    backgroundColor: '#fdf4f5',
+    position: 'relative',
+  },
+  recommendedBadge: {
+    position: 'absolute',
+    top: -10,
+    right: 16,
+    backgroundColor: '#b45309',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  recommendedText: {
+    fontSize: 8,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.surface,
+  },
+  planInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  planName: {
+    fontSize: 15,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.primary,
+  },
+  planPrice: {
+    fontSize: 18,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.textPrimary,
+    marginTop: 2,
+  },
+  planUnit: {
+    fontSize: 12,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textSecondary,
+  },
+  planDesc: {
+    fontSize: 11,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  modalCancelBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    marginTop: 8,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
   }
 });
