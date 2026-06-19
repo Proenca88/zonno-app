@@ -373,7 +373,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        style={{ flex: 1, height: '100%' }}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* TopBar */}
@@ -385,7 +385,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView style={{ flex: 1, height: '100%' }} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.introSection}>
             <Text style={styles.helperText}>
               {clienteEdicao 
@@ -573,7 +573,6 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    height: '100%',
     backgroundColor: COLORS.background,
   },
   header: {
