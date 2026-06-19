@@ -88,10 +88,29 @@ export function FinancasScreen({ currentUser, empresa, navigation }: FinancasScr
     .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
     .slice(0, 5);
 
-  const formatarData = (dataStr: string) => {
-    const d = new Date(dataStr);
-    return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' }) + ', ' +
-           d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const formatarData = (dataStr: string, horaStr?: string | null) => {
+    if (!dataStr) return '';
+    try {
+      const parts = dataStr.split('-');
+      if (parts.length === 3) {
+        // parts = [ano, mes, dia]
+        const dia = parts[2];
+        const dataFormatada = `${dia}/${parts[1]}`;
+        if (horaStr) {
+          return `${dataFormatada}, ${horaStr.substring(0, 5)}`;
+        }
+        return dataFormatada;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    
+    try {
+      const d = new Date(dataStr);
+      return d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) + (horaStr ? ', ' + horaStr.substring(0, 5) : '');
+    } catch {
+      return dataStr;
+    }
   };
 
   return (
@@ -233,7 +252,7 @@ export function FinancasScreen({ currentUser, empresa, navigation }: FinancasScr
                           <Text style={styles.transactionAmount}>
                             + {Number(item.valor_pago || 0).toFixed(2)} €
                           </Text>
-                          <Text style={styles.transactionDate}>{formatarData(item.data)}</Text>
+                          <Text style={styles.transactionDate}>{formatarData(item.data, item.hora)}</Text>
                         </View>
                       </View>
                     );
