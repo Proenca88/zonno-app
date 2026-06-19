@@ -4,7 +4,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Text,
   TextInput,
@@ -385,7 +385,14 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <FlatList
+          data={[{}]}
+          keyExtractor={() => 'form'}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          renderItem={() => (
+            <>
           <View style={styles.introSection}>
             <Text style={styles.helperText}>
               {clienteEdicao 
@@ -563,7 +570,9 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </ScrollView>
+            </>
+          )}
+        />
       </KeyboardAvoidingView>
       {renderCalendarModal()}
     </SafeAreaView>

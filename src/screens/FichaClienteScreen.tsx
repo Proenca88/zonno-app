@@ -407,7 +407,13 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : cliente ? (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+        <FlatList
+          data={[{}]}
+          keyExtractor={() => 'profile'}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          renderItem={() => (
+            <>
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
@@ -708,7 +714,9 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               <Text style={styles.btnEditText}>EDITAR CLIENTE</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+            </>
+          )}
+        />
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
