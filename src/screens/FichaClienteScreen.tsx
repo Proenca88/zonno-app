@@ -654,7 +654,12 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
       )}
 
       {/* Modal de Opções do Cliente (Editar/Eliminar) */}
-      {showOptionsModal && (
+      <Modal
+        visible={showOptionsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
         <View style={styles.customModalOverlay}>
           <TouchableOpacity 
             style={styles.customModalCloseArea} 
@@ -693,7 +698,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -702,7 +707,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    height: Platform.OS === 'web' ? '100vh' : 'auto',
   },
   scrollView: {
     flex: 1,

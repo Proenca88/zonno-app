@@ -9,11 +9,14 @@ import {
   View,
   SafeAreaView,
   Platform,
+  TextInput,
+  Alert,
+  Modal,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Servico, Categoria, Usuario, Empresa } from '../types';
-import { Sparkle, Plus, Clock, Tag } from 'phosphor-react-native';
+import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk } from 'phosphor-react-native';
 
 interface ServicosScreenProps {
   currentUser: Usuario;
@@ -26,6 +29,132 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
   const [selectedCategoria, setSelectedCategoria] = useState<string | null>(null); // null means "Todos"
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Form estados
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingServico, setEditingServico] = useState<Servico | null>(null);
+  const [formNome, setFormNome] = useState('');
+  const [formPreco, setFormPreco] = useState('');
+  const [formDuracao, setFormDuracao] = useState('');
+  const [formCategoriaId, setFormCategoriaId] = useState('');
+  const [formCor, setFormCor] = useState('#af4f57');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleNovoServico = () => {
+    setEditingServico(null);
+    setFormNome('');
+    setFormPreco('');
+    setFormDuracao('30');
+    setFormCategoriaId(categorias[0]?.id || '');
+    setFormCor('#af4f57');
+    setShowFormModal(true);
+  };
+
+  const handleEditServico = (servico: Servico) => {
+    setEditingServico(servico);
+    setFormNome(servico.nome);
+    setFormPreco(String(servico.preco));
+    setFormDuracao(String(servico.duracao));
+    setFormCategoriaId(servico.categoria_id || categorias[0]?.id || '');
+    setFormCor(servico.cor || '#af4f57');
+    setShowFormModal(true);
+  };
+
+  const handleSaveServico = async () => {
+    if (!formNome.trim()) {
+      Alert.alert("Erro", "O nome do serviço é obrigatório.");
+      return;
+    }
+    const precoNum = parseFloat(formPreco);
+    if (isNaN(precoNum) || precoNum < 0) {
+      Alert.alert("Erro", "Introduza um preço válido (positivo).");
+      return;
+    }
+    const duracaoNum = parseInt(formDuracao, 10);
+    if (isNaN(duracaoNum) || duracaoNum <= 0) {
+      Alert.alert("Erro", "Introduza uma duração válida em minutos.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const servicoData = {
+        empresa_id: currentUser.empresa_id,
+        nome: formNome.trim(),
+        preco: precoNum,
+        duracao: duracaoNum,
+        cor: formCor,
+        categoria_id: formCategoriaId || null,
+      };
+
+      if (editingServico) {
+        // UPDATE
+        const { error } = await supabase
+          .from('servicos')
+          .update(servicoData)
+          .eq('id', editingServico.id);
+
+        if (error) throw error;
+        Alert.alert("Sucesso", "Serviço atualizado com sucesso!");
+      } else {
+        // INSERT
+        const { error } = await supabase
+          .from('servicos')
+          .insert([servicoData]);
+
+        if (error) throw error;
+        Alert.alert("Sucesso", "Serviço adicionado com sucesso!");
+      }
+
+      setShowFormModal(false);
+      fetchData();
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível guardar o serviço: ${e.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const confirmDeleteServico = () => {
+    if (!editingServico) return;
+
+    if (Platform.OS === 'web') {
+      const confirmar = window.confirm(`Tem a certeza de que pretende eliminar permanentemente o serviço "${editingServico.nome}"?`);
+      if (confirmar) {
+        handleDeleteServico();
+      }
+    } else {
+      Alert.alert(
+        "Eliminar Serviço",
+        `Tem a certeza de que pretende eliminar permanentemente o serviço "${editingServico.nome}"?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Eliminar", style: "destructive", onPress: handleDeleteServico }
+        ]
+      );
+    }
+  };
+
+  const handleDeleteServico = async () => {
+    if (!editingServico) return;
+    try {
+      setIsSaving(true);
+      const { error } = await supabase
+        .from('servicos')
+        .delete()
+        .eq('id', editingServico.id);
+
+      if (error) throw error;
+
+      Alert.alert("Sucesso", "Serviço eliminado com sucesso!");
+      setShowFormModal(false);
+      fetchData();
+    } catch (e: any) {
+      Alert.alert("Erro", `Não foi possível eliminar o serviço: ${e.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -62,7 +191,11 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
     const serviceColor = item.cor || COLORS.primary;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => handleEditServico(item)}
+        activeOpacity={0.8}
+      >
         <View style={styles.cardMain}>
           <View style={[styles.iconContainer, { backgroundColor: `${serviceColor}15` }]}>
             <Sparkle size={20} color={serviceColor} weight="bold" />
@@ -80,7 +213,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
           </View>
           <Text style={styles.priceText}>{Number(item.preco).toFixed(2)}€</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -161,11 +294,160 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
       {/* FAB (Floating Action Button) */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => alert('Novo serviço através do painel principal.')}
+        onPress={handleNovoServico}
         activeOpacity={0.9}
       >
         <Plus size={24} color={COLORS.surface} weight="bold" />
       </TouchableOpacity>
+
+      {/* Modal de Formulário do Serviço (Adicionar/Editar) */}
+      <Modal
+        visible={showFormModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFormModal(false)}
+      >
+        <View style={styles.customModalOverlay}>
+          <TouchableOpacity 
+            style={styles.customModalCloseArea} 
+            activeOpacity={1} 
+            onPress={() => setShowFormModal(false)}
+          />
+          <View style={styles.formModalContent}>
+            <Text style={styles.modalTitle}>
+              {editingServico ? 'Editar Serviço' : 'Novo Serviço'}
+            </Text>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nome do Serviço</Text>
+              <TextInput
+                style={styles.input}
+                value={formNome}
+                onChangeText={setFormNome}
+                placeholder="Ex: Corte de Cabelo"
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={[styles.formGroup, { flex: 1, marginRight: 12 }]}>
+                <Text style={styles.label}>Preço (€)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formPreco}
+                  onChangeText={setFormPreco}
+                  placeholder="0.00"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={[styles.formGroup, { flex: 1 }]}>
+                <Text style={styles.label}>Duração (min)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formDuracao}
+                  onChangeText={setFormDuracao}
+                  placeholder="30"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Categoria</Text>
+              <View style={styles.categoriesRow}>
+                {categorias.map((cat) => {
+                  const isSelected = formCategoriaId === cat.id;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryOption,
+                        isSelected && styles.categoryOptionActive
+                      ]}
+                      onPress={() => setFormCategoriaId(cat.id)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.categoryOptionText,
+                        isSelected && styles.categoryOptionTextActive
+                      ]}>
+                        {cat.nome}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Cor do Serviço</Text>
+              <View style={styles.colorPalette}>
+                {[
+                  '#af4f57', // Vinho/Rosa
+                  '#1e3a8a', // Azul
+                  '#15803d', // Verde
+                  '#b45309', // Dourado
+                  '#6b21a8', // Roxo
+                  '#111827', // Preto
+                ].map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color },
+                      formCor === color && styles.colorCircleActive,
+                    ]}
+                    onPress={() => setFormCor(color)}
+                    activeOpacity={0.8}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              {editingServico && (
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.btnDelete]}
+                  onPress={confirmDeleteServico}
+                  disabled={isSaving}
+                  activeOpacity={0.8}
+                >
+                  <Trash size={18} color="#b91c1c" />
+                  <Text style={styles.btnDeleteText}>Eliminar</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity 
+                style={[styles.actionBtn, styles.btnSave, { flex: editingServico ? 1.5 : 1 }]}
+                onPress={handleSaveServico}
+                disabled={isSaving}
+                activeOpacity={0.8}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={COLORS.surface} />
+                ) : (
+                  <>
+                    <FloppyDisk size={18} color={COLORS.surface} />
+                    <Text style={styles.btnSaveText}>Gravar</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.modalCancelBtn}
+              onPress={() => setShowFormModal(false)}
+              disabled={isSaving}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -340,5 +622,158 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  customModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 9999,
+  },
+  customModalCloseArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  formModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: TYPOGRAPHY.fontFamily.serifBold,
+    color: COLORS.primary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: '#fafafa',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  categoryOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  categoryOptionActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+  categoryOptionText: {
+    fontSize: 12,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.textSecondary,
+  },
+  categoryOptionTextActive: {
+    color: COLORS.surface,
+  },
+  colorPalette: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  colorCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorCircleActive: {
+    borderColor: COLORS.textPrimary,
+    transform: [{ scale: 1.1 }],
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  btnDelete: {
+    flex: 1,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+  },
+  btnDeleteText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    fontSize: 14,
+    color: '#b91c1c',
+  },
+  btnSave: {
+    backgroundColor: COLORS.primary,
+  },
+  btnSaveText: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    fontSize: 14,
+    color: COLORS.surface,
+  },
+  modalCancelBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    backgroundColor: '#f4f4f5',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.textPrimary,
+  },
 });
-
