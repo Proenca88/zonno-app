@@ -6,15 +6,15 @@ import {
   Text,
   TouchableOpacity,
   View,
-  SafeAreaView,
-  Alert,
-  Platform,
-  useWindowDimensions,
   Linking,
   Modal,
   Image,
   ScrollView,
+  useWindowDimensions,
+  Alert,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Cliente, Usuario, Empresa } from '../types';
@@ -404,15 +404,10 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator color={COLORS.primary} size="large" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : cliente ? (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
@@ -832,13 +827,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    ...Platform.select({
-      web: { height: '100vh' as any }
-    }),
     backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
   },
   header: {
     height: 64,

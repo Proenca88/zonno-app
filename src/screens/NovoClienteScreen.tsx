@@ -10,9 +10,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  SafeAreaView,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Usuario, Empresa } from '../types';
@@ -573,9 +573,6 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    ...Platform.select({
-      web: { height: '100vh' as any }
-    }),
     backgroundColor: COLORS.background,
   },
   header: {
