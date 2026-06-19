@@ -19,6 +19,19 @@ import { supabase } from '../remote/supabase';
 import { Servico, Categoria, Usuario, Empresa } from '../types';
 import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk, Scissors, PaintBrush, Stethoscope, PencilSimple, X } from 'phosphor-react-native';
 
+const COLOR_OPTIONS = [
+  { key: 'primary', hex: COLORS.primary, label: 'Marca' },
+  { key: 'secondary', hex: '#6b21a8', label: 'Roxo' },
+  { key: 'green', hex: '#15803d', label: 'Verde' },
+  { key: 'blue', hex: '#1e3a8a', label: 'Azul' },
+  { key: 'orange', hex: '#b45309', label: 'Laranja' },
+];
+
+const mapColorKeyToHex = (colorKey?: string | null) => {
+  const found = COLOR_OPTIONS.find(opt => opt.key === colorKey);
+  return found ? found.hex : COLORS.primary;
+};
+
 interface ServicosScreenProps {
   currentUser: Usuario;
   empresa: Empresa;
@@ -37,14 +50,16 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
   const [formNome, setFormNome] = useState('');
   const [formPreco, setFormPreco] = useState('');
   const [formDuracao, setFormDuracao] = useState('');
-  const [formCategoriaId, setFormCategoriaId] = useState('');
-  const [formCor, setFormCor] = useState('#af4f57');
+  const [formCategoria, setFormCategoria] = useState('');
+  const [formCor, setFormCor] = useState('primary');
   const [isSaving, setIsSaving] = useState(false);
 
   const [showGerirCategoriasModal, setShowGerirCategoriasModal] = useState(false);
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
+  const [novaCategoriaCor, setNovaCategoriaCor] = useState('primary');
   const [editingCategoriaId, setEditingCategoriaId] = useState<string | null>(null);
   const [editingCategoriaNome, setEditingCategoriaNome] = useState('');
+  const [editingCategoriaCor, setEditingCategoriaCor] = useState('primary');
   const [isCategoryActionLoading, setIsCategoryActionLoading] = useState(false);
 
   const handleAddCategoria = async () => {
@@ -56,9 +71,14 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
       setIsCategoryActionLoading(true);
       const { error } = await supabase
         .from('categorias')
-        .insert([{ empresa_id: currentUser.empresa_id, nome: novaCategoriaNome.trim() }]);
+        .insert([{ 
+          empresa_id: currentUser.empresa_id, 
+          nome: novaCategoriaNome.trim(),
+          cor: novaCategoriaCor 
+        }]);
       if (error) throw error;
       setNovaCategoriaNome('');
+      setNovaCategoriaCor('primary');
       await fetchData();
       Alert.alert("Sucesso", "Categoria adicionada com sucesso!");
     } catch (e: any) {
@@ -77,7 +97,10 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
       setIsCategoryActionLoading(true);
       const { error } = await supabase
         .from('categorias')
-        .update({ nome: editingCategoriaNome.trim() })
+        .update({ 
+          nome: editingCategoriaNome.trim(),
+          cor: editingCategoriaCor 
+        })
         .eq('id', catId);
       if (error) throw error;
       setEditingCategoriaId(null);
@@ -92,7 +115,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
   };
 
   const handleDeleteCategoria = async (catId: string, catNome: string) => {
-    const servicosNaCategoria = servicos.filter((s) => s.categoria_id === catId);
+    const servicosNaCategoria = servicos.filter((s) => s.categoria === catNome);
     if (servicosNaCategoria.length > 0) {
       Alert.alert(
         "Não é possível eliminar",
@@ -140,8 +163,8 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
     setFormNome('');
     setFormPreco('');
     setFormDuracao('30');
-    setFormCategoriaId(categorias[0]?.id || '');
-    setFormCor('#af4f57');
+    setFormCategoria(categorias[0]?.nome || '');
+    setFormCor('primary');
     setShowFormModal(true);
   };
 
@@ -150,8 +173,8 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
     setFormNome(servico.nome);
     setFormPreco(String(servico.preco));
     setFormDuracao(String(servico.duracao));
-    setFormCategoriaId(servico.categoria_id || categorias[0]?.id || '');
-    setFormCor(servico.cor || '#af4f57');
+    setFormCategoria(servico.categoria || categorias[0]?.nome || '');
+    setFormCor(servico.cor || 'primary');
     setShowFormModal(true);
   };
 
@@ -179,7 +202,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
         preco: precoNum,
         duracao: duracaoNum,
         cor: formCor,
-        categoria_id: formCategoriaId || null,
+        categoria: formCategoria || null,
       };
 
       if (editingServico) {
@@ -278,12 +301,12 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
   };
 
   const filteredServicos = selectedCategoria
-    ? servicos.filter((s) => s.categoria_id === selectedCategoria)
+    ? servicos.filter((s) => s.categoria === selectedCategoria)
     : servicos;
 
   const renderService = ({ item }: { item: Servico }) => {
-    const categoria = categorias.find((c) => c.id === item.categoria_id);
-    const serviceColor = item.cor || COLORS.primary;
+    const categoria = categorias.find((c) => c.nome === item.categoria);
+    const serviceColor = mapColorKeyToHex(item.cor);
 
     const getNichoIcon = () => {
       const nicho = empresa?.nicho;
@@ -361,17 +384,17 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 data={[{ id: null, nome: 'Todos' }, ...categorias]}
-                keyExtractor={(item) => String(item.id)}
+                keyExtractor={(item) => String(item.id || 'todos')}
                 contentContainerStyle={styles.tabsContainer}
                 renderItem={({ item }) => {
-                  const isActive = selectedCategoria === item.id;
+                  const isActive = (item.nome === 'Todos' && selectedCategoria === null) || selectedCategoria === item.nome;
                   return (
                     <TouchableOpacity
                       style={[
                         styles.tabButton,
                         isActive && styles.tabButtonActive
                       ]}
-                      onPress={() => setSelectedCategoria(item.id)}
+                      onPress={() => setSelectedCategoria(item.nome === 'Todos' ? null : item.nome)}
                       activeOpacity={0.8}
                     >
                       <Text
@@ -486,7 +509,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
               ) : (
                 <View style={styles.categoriesRow}>
                   {categorias.map((cat) => {
-                    const isSelected = formCategoriaId === cat.id;
+                    const isSelected = formCategoria === cat.nome;
                     return (
                       <TouchableOpacity
                         key={cat.id}
@@ -494,7 +517,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                           styles.categoryOption,
                           isSelected && styles.categoryOptionActive
                         ]}
-                        onPress={() => setFormCategoriaId(cat.id)}
+                        onPress={() => setFormCategoria(cat.nome)}
                         activeOpacity={0.8}
                       >
                         <Text style={[
@@ -513,22 +536,15 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Cor do Serviço</Text>
               <View style={styles.colorPalette}>
-                {[
-                  '#af4f57',
-                  '#1e3a8a',
-                  '#15803d',
-                  '#b45309',
-                  '#6b21a8',
-                  '#111827',
-                ].map((color) => (
+                {COLOR_OPTIONS.map((opt) => (
                   <TouchableOpacity
-                    key={color}
+                    key={opt.key}
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: color },
-                      formCor === color && styles.colorCircleActive,
+                      { backgroundColor: opt.hex },
+                      formCor === opt.key && styles.colorCircleActive,
                     ]}
-                    onPress={() => setFormCor(color)}
+                    onPress={() => setFormCor(opt.key)}
                     activeOpacity={0.8}
                   />
                 ))}
@@ -602,22 +618,41 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
 
             <View style={{ padding: 24 }}>
               {/* Form de Nova Categoria */}
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-                <TextInput
-                  style={[styles.input, { flex: 1, height: 44 }]}
-                  placeholder="Nova categoria (ex: Massagens)"
-                  placeholderTextColor="#9ca3af"
-                  value={novaCategoriaNome}
-                  onChangeText={setNovaCategoriaNome}
-                  editable={!isCategoryActionLoading}
-                />
-                <TouchableOpacity
-                  style={[styles.btnSave, { height: 44, paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center', marginTop: 0 }]}
-                  onPress={handleAddCategoria}
-                  disabled={isCategoryActionLoading}
-                >
-                  <Text style={[styles.btnSaveText, { fontSize: 13 }]}>+ Add</Text>
-                </TouchableOpacity>
+              <View style={{ marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, height: 44 }]}
+                    placeholder="Nova categoria (ex: Massagens)"
+                    placeholderTextColor="#9ca3af"
+                    value={novaCategoriaNome}
+                    onChangeText={setNovaCategoriaNome}
+                    editable={!isCategoryActionLoading}
+                  />
+                  <TouchableOpacity
+                    style={[styles.btnSave, { height: 44, paddingHorizontal: 16, justifyContent: 'center', alignItems: 'center', marginTop: 0 }]}
+                    onPress={handleAddCategoria}
+                    disabled={isCategoryActionLoading}
+                  >
+                    <Text style={[styles.btnSaveText, { fontSize: 13 }]}>+ Add</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Seletor de Cor da Categoria */}
+                <Text style={[styles.label, { fontSize: 10, marginBottom: 4 }]}>Cor da Categoria</Text>
+                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  {COLOR_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: opt.hex, width: 24, height: 24, borderRadius: 12 },
+                        novaCategoriaCor === opt.key && { borderWidth: 2, borderColor: COLORS.textPrimary }
+                      ]}
+                      onPress={() => setNovaCategoriaCor(opt.key)}
+                      activeOpacity={0.8}
+                    />
+                  ))}
+                </View>
               </View>
 
               {/* Lista de Categorias */}
@@ -643,16 +678,35 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                         }}
                       >
                         {isEditing ? (
-                          <TextInput
-                            style={[styles.input, { flex: 1, height: 36, paddingHorizontal: 8, fontSize: 13 }]}
-                            value={editingCategoriaNome}
-                            onChangeText={setEditingCategoriaNome}
-                            autoFocus
-                          />
+                          <View style={{ flex: 1, gap: 4 }}>
+                            <TextInput
+                              style={[styles.input, { height: 36, paddingHorizontal: 8, fontSize: 13 }]}
+                              value={editingCategoriaNome}
+                              onChangeText={setEditingCategoriaNome}
+                              autoFocus
+                            />
+                            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                              {COLOR_OPTIONS.map((opt) => (
+                                <TouchableOpacity
+                                  key={opt.key}
+                                  style={[
+                                    styles.colorCircle,
+                                    { backgroundColor: opt.hex, width: 18, height: 18, borderRadius: 9 },
+                                    editingCategoriaCor === opt.key && { borderWidth: 1.5, borderColor: COLORS.textPrimary }
+                                  ]}
+                                  onPress={() => setEditingCategoriaCor(opt.key)}
+                                  activeOpacity={0.8}
+                                />
+                              ))}
+                            </View>
+                          </View>
                         ) : (
-                          <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: COLORS.textPrimary }}>
-                            {cat.nome}
-                          </Text>
+                          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: mapColorKeyToHex(cat.cor) }} />
+                            <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: COLORS.textPrimary }}>
+                              {cat.nome}
+                            </Text>
+                          </View>
                         )}
 
                         <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -681,6 +735,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                                 onPress={() => {
                                   setEditingCategoriaId(cat.id);
                                   setEditingCategoriaNome(cat.nome);
+                                  setEditingCategoriaCor(cat.cor || 'primary');
                                 }}
                               >
                                 <PencilSimple size={16} color={COLORS.textPrimary} />

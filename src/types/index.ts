@@ -40,7 +40,7 @@ export interface Servico {
   preco: number;
   duracao: number; // em minutos
   cor?: string | null;
-  categoria_id?: string | null;
+  categoria?: string | null;
   created_at?: string;
 }
 
