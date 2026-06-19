@@ -14,14 +14,15 @@ import {
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Agendamento, Cliente, Servico, Usuario, Empresa } from '../types';
-import { TrendUp, Wallet, ArrowUpRight, Plus, Sparkle } from 'phosphor-react-native';
+import { TrendUp, Wallet, ArrowUpRight, Plus, Sparkle, Scissors, PaintBrush, Stethoscope } from 'phosphor-react-native';
 
 interface FinancasScreenProps {
   currentUser: Usuario;
   empresa: Empresa;
+  navigation?: any;
 }
 
-export function FinancasScreen({ currentUser, empresa }: FinancasScreenProps) {
+export function FinancasScreen({ currentUser, empresa, navigation }: FinancasScreenProps) {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -201,11 +202,25 @@ export function FinancasScreen({ currentUser, empresa }: FinancasScreenProps) {
                     const cliente = clientes.find((c) => c.id === item.cliente_id);
                     const servico = servicos.find((s) => s.id === item.servico_id);
 
+                    const getNichoIcon = () => {
+                      const nicho = empresa?.nicho;
+                      if (nicho === 'barbearia' || nicho === 'cabeleireiro') {
+                        return Scissors;
+                      } else if (nicho === 'tattoo') {
+                        return PaintBrush;
+                      } else if (nicho === 'clinica') {
+                        return Stethoscope;
+                      }
+                      return Sparkle;
+                    };
+
+                    const IconComponent = getNichoIcon();
+
                     return (
                       <View key={item.id} style={styles.transactionCard}>
                         <View style={styles.transactionLeft}>
                           <View style={styles.iconContainer}>
-                            <Sparkle size={18} color={COLORS.primary} weight="bold" />
+                            <IconComponent size={18} color={COLORS.primary} weight="bold" />
                           </View>
                           <View style={styles.transactionInfo}>
                             <Text style={styles.transactionName}>{servico?.nome || 'Serviço'}</Text>
@@ -234,7 +249,7 @@ export function FinancasScreen({ currentUser, empresa }: FinancasScreenProps) {
       <View style={styles.fabContainer}>
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => alert('Nova venda através do painel principal.')}
+          onPress={() => navigation?.navigate('NewAppointment')}
           activeOpacity={0.9}
         >
           <Plus size={20} color={COLORS.surface} weight="bold" style={{ marginRight: 8 }} />
