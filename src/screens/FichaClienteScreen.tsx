@@ -833,10 +833,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+    height: Platform.OS === 'web' ? '100vh' : undefined,
+    overflow: Platform.OS === 'web' ? 'hidden' : undefined,
   },
   scrollView: {
     flex: 1,
     width: '100%',
+    overflow: Platform.OS === 'web' ? 'auto' : undefined,
   },
   header: {
     height: 64,
