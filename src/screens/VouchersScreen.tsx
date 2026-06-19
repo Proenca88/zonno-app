@@ -671,6 +671,9 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
                           style={styles.dropdownItem}
                           onPress={() => {
                             setServicoId(s.id);
+                            if (s.preco) {
+                              setValor(String(s.preco));
+                            }
                             setShowServicoDropdown(false);
                           }}
                         >
