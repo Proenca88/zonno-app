@@ -14,12 +14,13 @@ import {
   Alert,
   Linking,
   Modal,
+  TextInput,
   useWindowDimensions,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Agendamento, Cliente, Servico, Usuario } from '../types';
-import { Calendar, Users, SignOut, Plus, Phone, Chat, Clock, TrendUp } from 'phosphor-react-native';
+import { Calendar, Users, SignOut, Plus, Phone, Chat, Clock, TrendUp, CurrencyDollar, X } from 'phosphor-react-native';
 
 interface DashboardScreenProps {
   currentUser: Usuario;
@@ -44,6 +45,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   // Estados para navegação de data e hora atual
   const [dataSelecionada, setDataSelecionada] = useState<Date>(new Date());
   const [agoraTime, setAgoraTime] = useState<Date>(new Date());
+
+  // Estados para FAB expandido e modal de Registar Venda
+  const [fabOpen, setFabOpen] = useState(false);
+  const [showVendaModal, setShowVendaModal] = useState(false);
+  const [vendaClienteId, setVendaClienteId] = useState('');
+  const [vendaServicoId, setVendaServicoId] = useState('');
+  const [vendaValor, setVendaValor] = useState('');
+  const [vendaObservacoes, setVendaObservacoes] = useState('');
+  const [isSavingVenda, setIsSavingVenda] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -336,6 +346,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   }
 
   return (
+    <>
     <SafeAreaView style={styles.safeArea}>
       {/* Top Header */}
       <View style={styles.header}>
@@ -541,13 +552,68 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* Floating Action Button (FAB) */}
+      {/* FAB Expandido com 2 ações */}
+      {fabOpen && (
+        <TouchableOpacity
+          style={styles.fabOverlay}
+          activeOpacity={1}
+          onPress={() => setFabOpen(false)}
+        />
+      )}
+
+      {fabOpen && (
+        <View style={styles.fabMenu}>
+          {/* Botão Registar Venda */}
+          <TouchableOpacity
+            style={styles.fabMenuItem}
+            onPress={() => {
+              setFabOpen(false);
+              setVendaClienteId('');
+              setVendaServicoId(servicos[0]?.id || '');
+              setVendaValor(servicos[0] ? String(servicos[0].preco) : '');
+              setVendaObservacoes('');
+              setShowVendaModal(true);
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.fabMenuItemContent}>
+              <Text style={styles.fabMenuItemLabel}>Registar Venda</Text>
+              <View style={styles.fabMenuItemIcon}>
+                <CurrencyDollar size={20} color={COLORS.surface} weight="bold" />
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Botão Nova Marcação */}
+          <TouchableOpacity
+            style={styles.fabMenuItem}
+            onPress={() => {
+              setFabOpen(false);
+              navigation?.navigate('NewAppointment');
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={styles.fabMenuItemContent}>
+              <Text style={styles.fabMenuItemLabel}>Nova Marcação</Text>
+              <View style={styles.fabMenuItemIcon}>
+                <Calendar size={20} color={COLORS.surface} weight="bold" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* FAB Principal */}
       <TouchableOpacity 
-        style={styles.fab} 
-        onPress={() => navigation?.navigate('NewAppointment')}
+        style={[styles.fab, fabOpen && styles.fabOpen]} 
+        onPress={() => setFabOpen(!fabOpen)}
         activeOpacity={0.9}
       >
-        <Plus size={24} color={COLORS.surface} weight="bold" />
+        {fabOpen ? (
+          <X size={24} color={COLORS.surface} weight="bold" />
+        ) : (
+          <Plus size={24} color={COLORS.surface} weight="bold" />
+        )}
       </TouchableOpacity>
 
       {/* Modal de Opções do Agendamento */}
@@ -632,6 +698,163 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </View>
       )}
     </SafeAreaView>
+
+      {/* Modal de Registar Venda */}
+      <Modal
+        visible={showVendaModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowVendaModal(false)}
+      >
+        <View style={styles.customModalOverlay}>
+          <TouchableOpacity
+            style={styles.customModalCloseArea}
+            activeOpacity={1}
+            onPress={() => setShowVendaModal(false)}
+          />
+          <View style={[styles.optionsModalContent, { maxHeight: '85%' }]}>
+            <Text style={styles.modalTitle}>Registar Venda</Text>
+            <Text style={styles.modalSubTitle}>Registe uma venda ou pagamento sem marcação prévia.</Text>
+
+            {/* Seleção de Serviço */}
+            <Text style={[styles.modalSubTitle, { fontFamily: TYPOGRAPHY.fontFamily.sansBold, color: COLORS.textPrimary, marginBottom: 8, marginTop: 4 }]}>Serviço</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {servicos.map(sv => (
+                  <TouchableOpacity
+                    key={sv.id}
+                    style={[
+                      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+                      vendaServicoId === sv.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' }
+                    ]}
+                    onPress={() => {
+                      setVendaServicoId(sv.id);
+                      setVendaValor(String(sv.preco));
+                    }}
+                  >
+                    <Text style={[
+                      { fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 13, color: COLORS.textSecondary },
+                      vendaServicoId === sv.id && { color: COLORS.primary }
+                    ]}>{sv.nome}</Text>
+                    <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.primary, marginTop: 2 }}>{Number(sv.preco).toFixed(2)}€</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Seleção de Cliente */}
+            <Text style={[styles.modalSubTitle, { fontFamily: TYPOGRAPHY.fontFamily.sansBold, color: COLORS.textPrimary, marginBottom: 8 }]}>Cliente (opcional)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[
+                    { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+                    vendaClienteId === '' && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' }
+                  ]}
+                  onPress={() => setVendaClienteId('')}
+                >
+                  <Text style={[
+                    { fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 13, color: COLORS.textSecondary },
+                    vendaClienteId === '' && { color: COLORS.primary }
+                  ]}>Sem cliente</Text>
+                </TouchableOpacity>
+                {clientes.map(cl => (
+                  <TouchableOpacity
+                    key={cl.id}
+                    style={[
+                      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
+                      vendaClienteId === cl.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' }
+                    ]}
+                    onPress={() => setVendaClienteId(cl.id)}
+                  >
+                    <Text style={[
+                      { fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 13, color: COLORS.textSecondary },
+                      vendaClienteId === cl.id && { color: COLORS.primary }
+                    ]}>{cl.nome.split(' ')[0]}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Valor */}
+            <Text style={[styles.modalSubTitle, { fontFamily: TYPOGRAPHY.fontFamily.sansBold, color: COLORS.textPrimary, marginBottom: 8 }]}>Valor (€)</Text>
+            <TextInput
+              style={{
+                backgroundColor: COLORS.inputBackground,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                borderRadius: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                fontFamily: TYPOGRAPHY.fontFamily.sans,
+                fontSize: 16,
+                color: COLORS.textPrimary,
+                marginBottom: 16,
+              }}
+              value={vendaValor}
+              onChangeText={setVendaValor}
+              placeholder="0.00"
+              placeholderTextColor={COLORS.textSecondary}
+              keyboardType="numeric"
+            />
+
+            {/* Botões de ação */}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { flex: 1 }]}
+                onPress={() => setShowVendaModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 2, backgroundColor: COLORS.primary, borderRadius: 12, justifyContent: 'center', alignItems: 'center', paddingVertical: 14, opacity: isSavingVenda ? 0.6 : 1 }}
+                disabled={isSavingVenda}
+                onPress={async () => {
+                  const valorNum = parseFloat(vendaValor);
+                  if (isNaN(valorNum) || valorNum <= 0) {
+                    Alert.alert('Erro', 'Introduza um valor válido.');
+                    return;
+                  }
+                  if (!vendaServicoId) {
+                    Alert.alert('Erro', 'Selecione um serviço.');
+                    return;
+                  }
+                  try {
+                    setIsSavingVenda(true);
+                    const hoje = new Date();
+                    const dataStr = hoje.toISOString().split('T')[0];
+                    const horaStr = hoje.toTimeString().split(' ')[0].substring(0, 5);
+                    const { error } = await supabase.from('agendamentos').insert([{
+                      empresa_id: currentUser.empresa_id,
+                      cliente_id: vendaClienteId || null,
+                      servico_id: vendaServicoId,
+                      data: dataStr,
+                      hora: horaStr,
+                      status: 'concluido',
+                      valor_pago: valorNum,
+                      observacoes: vendaObservacoes || 'Venda direta registada',
+                    }]);
+                    if (error) throw error;
+                    Alert.alert('Sucesso', 'Venda registada com sucesso!');
+                    setShowVendaModal(false);
+                    fetchData();
+                  } catch (e: any) {
+                    Alert.alert('Erro', `Não foi possível registar a venda: ${e.message}`);
+                  } finally {
+                    setIsSavingVenda(false);
+                  }
+                }}
+              >
+                <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 14, color: COLORS.surface }}>
+                  {isSavingVenda ? 'A guardar...' : 'Registar Venda'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 };
 
@@ -1006,7 +1229,60 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
+    zIndex: 100,
+  },
+  fabOpen: {
+    backgroundColor: '#333333',
+  },
+  fabOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 90,
+  },
+  fabMenu: {
+    position: 'absolute',
+    bottom: 152,
+    right: 20,
+    gap: 12,
+    alignItems: 'flex-end',
+    zIndex: 99,
+  },
+  fabMenuItem: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  fabMenuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.surface,
+    paddingVertical: 10,
+    paddingLeft: 16,
+    paddingRight: 10,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  fabMenuItemLabel: {
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    fontSize: 14,
+    color: COLORS.primary,
+  },
+  fabMenuItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalOverlay: {
     flex: 1,

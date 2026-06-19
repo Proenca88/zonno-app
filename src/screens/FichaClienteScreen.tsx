@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   Linking,
   Modal,
-  KeyboardAvoidingView,
+  Image,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -31,6 +31,9 @@ import {
   Chat,
   DotsThreeVertical,
   Cake,
+  Camera,
+  Trash,
+  UserCircle,
 } from 'phosphor-react-native';
 
 interface FichaClienteScreenProps {
@@ -57,6 +60,8 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [fotoUri, setFotoUri] = useState<string | null>(null);
+  const [showFotoModal, setShowFotoModal] = useState(false);
 
   useEffect(() => {
     const loadAllData = async () => {
@@ -215,6 +220,57 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
     setShowOptionsModal(true);
   };
 
+  const handleAvatarPress = () => {
+    setShowFotoModal(true);
+  };
+
+  const handleEscolherFoto = async () => {
+    setShowFotoModal(false);
+    if (Platform.OS === 'web') {
+      // No web, criar um input file
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev: any) => {
+            setFotoUri(ev.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      // No móvel, tentar usar expo-image-picker se disponível
+      try {
+        const ImagePicker = require('expo-image-picker');
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permissão Negada', 'É necessária permissão para aceder à galeria.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+        if (!result.canceled && result.assets?.[0]?.uri) {
+          setFotoUri(result.assets[0].uri);
+        }
+      } catch {
+        Alert.alert('Aviso', 'Não foi possível abrir a galeria neste dispositivo.');
+      }
+    }
+  };
+
+  const handleRemoverFoto = () => {
+    setFotoUri(null);
+    setShowFotoModal(false);
+  };
+
   const confirmarEliminarCliente = () => {
     if (Platform.OS === 'web') {
       const confirmar = window.confirm(`Tem a certeza de que pretende eliminar permanentemente o cliente ${cliente?.nome}? Esta ação não pode ser desfeita e irá remover todo o seu histórico de visitas.`);
@@ -334,10 +390,6 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
       {/* TopBar */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
@@ -355,15 +407,26 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <ScrollView 
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent} 
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getIniciais(cliente.nome)}</Text>
-            </View>
+            <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
+              {fotoUri ? (
+                <Image source={{ uri: fotoUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{getIniciais(cliente.nome)}</Text>
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Camera size={12} color={COLORS.surface} weight="bold" />
+              </View>
+            </TouchableOpacity>
             <Text style={styles.nomeText}>{cliente.nome}</Text>
             <Text style={styles.subInfoText}>Cliente desde {formatarData(cliente.created_at || '2023-06-15')}</Text>
             
@@ -656,7 +719,65 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
         </View>
       )}
-      </KeyboardAvoidingView>
+
+      {/* Modal de Foto de Perfil */}
+      <Modal
+        visible={showFotoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFotoModal(false)}
+      >
+        <View style={styles.customModalOverlay}>
+          <TouchableOpacity 
+            style={styles.customModalCloseArea} 
+            activeOpacity={1} 
+            onPress={() => setShowFotoModal(false)}
+          />
+          <View style={styles.optionsModalContent}>
+            <Text style={styles.modalTitle}>Foto de Perfil</Text>
+            <Text style={styles.modalSubTitle}>Escolha o que pretende fazer com a foto do cliente:</Text>
+            
+            <TouchableOpacity 
+              style={styles.modalOptionBtn}
+              onPress={handleEscolherFoto}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Camera size={18} color={COLORS.primary} />
+                <Text style={styles.modalOptionText}>Escolher Foto da Galeria</Text>
+              </View>
+            </TouchableOpacity>
+
+            {fotoUri ? (
+              <TouchableOpacity 
+                style={[styles.modalOptionBtn, { borderBottomWidth: 0 }]}
+                onPress={handleRemoverFoto}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Trash size={18} color={COLORS.status.cancelado.text} />
+                  <Text style={[styles.modalOptionText, { color: COLORS.status.cancelado.text }]}>Remover Foto (usar iniciais)</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={[styles.modalOptionBtn, { borderBottomWidth: 0, opacity: 0.4 }]}
+                disabled={true}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <UserCircle size={18} color={COLORS.textSecondary} />
+                  <Text style={[styles.modalOptionText, { color: COLORS.textSecondary }]}>A usar iniciais (sem foto)</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity 
+              style={styles.modalCancelBtn}
+              onPress={() => setShowFotoModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de Opções do Cliente (Editar/Eliminar) */}
       <Modal
@@ -715,6 +836,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    width: '100%',
   },
   header: {
     height: 64,
@@ -760,6 +882,30 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     width: '100%',
   },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  avatarImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 4,
+    borderColor: COLORS.surface,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+  },
   avatar: {
     width: 96,
     height: 96,
@@ -767,7 +913,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.inputBackground,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
     borderWidth: 4,
     borderColor: COLORS.surface,
     shadowColor: '#000',
