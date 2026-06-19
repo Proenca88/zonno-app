@@ -702,11 +702,10 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    height: Platform.OS === 'web' ? '100%' : 'auto',
+    height: Platform.OS === 'web' ? '100vh' : 'auto',
   },
   scrollView: {
     flex: 1,
-    height: Platform.OS === 'web' ? '100%' : 'auto',
   },
   header: {
     height: 64,
