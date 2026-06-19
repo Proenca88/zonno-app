@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   SafeAreaView,
-  ScrollView,
   Alert,
   Platform,
   useWindowDimensions,
@@ -406,13 +406,14 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <ActivityIndicator color={COLORS.primary} size="large" />
         </View>
       ) : cliente ? (
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent} 
+        <FlatList
+          data={[]}
+          keyExtractor={() => 'key'}
+          renderItem={null}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-        >
-          
+          contentContainerStyle={styles.scrollContent}
+          ListHeaderComponent={<>
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
@@ -713,7 +714,8 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               <Text style={styles.btnEditText}>EDITAR CLIENTE</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+          </>}
+        />
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
@@ -833,13 +835,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    height: Platform.OS === 'web' ? '100vh' : undefined,
-    overflow: Platform.OS === 'web' ? 'hidden' : undefined,
   },
   scrollView: {
     flex: 1,
-    width: '100%',
-    overflow: Platform.OS === 'web' ? 'auto' : undefined,
   },
   header: {
     height: 64,

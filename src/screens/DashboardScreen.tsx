@@ -50,10 +50,23 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [fabOpen, setFabOpen] = useState(false);
   const [showVendaModal, setShowVendaModal] = useState(false);
   const [vendaClienteId, setVendaClienteId] = useState('');
-  const [vendaServicoId, setVendaServicoId] = useState('');
-  const [vendaValor, setVendaValor] = useState('');
-  const [vendaObservacoes, setVendaObservacoes] = useState('');
+  const [vendaServicosIds, setVendaServicosIds] = useState<string[]>([]);
+  const [vendaValorManual, setVendaValorManual] = useState('');
   const [isSavingVenda, setIsSavingVenda] = useState(false);
+
+  // Calcular total automático dos serviços selecionados
+  const calcularTotalVenda = () => {
+    const total = servicos
+      .filter(sv => vendaServicosIds.includes(sv.id))
+      .reduce((sum, sv) => sum + Number(sv.preco), 0);
+    return total;
+  };
+
+  const toggleServicoVenda = (id: string, preco: number) => {
+    setVendaServicosIds(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
 
   const fetchData = async () => {
     try {
@@ -569,9 +582,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             onPress={() => {
               setFabOpen(false);
               setVendaClienteId('');
-              setVendaServicoId(servicos[0]?.id || '');
-              setVendaValor(servicos[0] ? String(servicos[0].preco) : '');
-              setVendaObservacoes('');
+              setVendaServicosIds([]);
+              setVendaValorManual('');
               setShowVendaModal(true);
             }}
             activeOpacity={0.85}
@@ -699,7 +711,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       )}
     </SafeAreaView>
 
-      {/* Modal de Registar Venda */}
+      {/* Modal de Registar Venda - Redesenhado */}
       <Modal
         visible={showVendaModal}
         transparent={true}
@@ -712,112 +724,151 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             activeOpacity={1}
             onPress={() => setShowVendaModal(false)}
           />
-          <View style={[styles.optionsModalContent, { maxHeight: '85%' }]}>
-            <Text style={styles.modalTitle}>Registar Venda</Text>
-            <Text style={styles.modalSubTitle}>Registe uma venda ou pagamento sem marcação prévia.</Text>
+          <View style={[styles.optionsModalContent, { maxHeight: '90%', padding: 0, overflow: 'hidden' }]}>
+            {/* Header do Modal */}
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+              <Text style={styles.modalTitle}>Registar Venda</Text>
+              <Text style={styles.modalSubTitle}>Selecione os serviços realizados e o cliente.</Text>
+            </View>
 
-            {/* Seleção de Serviço */}
-            <Text style={[styles.modalSubTitle, { fontFamily: TYPOGRAPHY.fontFamily.sansBold, color: COLORS.textPrimary, marginBottom: 8, marginTop: 4 }]}>Serviço</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {servicos.map(sv => (
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={{ padding: 24 }}>
+
+                {/* Serviços - Multi-seleção vertical */}
+                <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Serviços</Text>
+                <View style={{ gap: 8, marginBottom: 20 }}>
+                  {servicos.map(sv => {
+                    const isSelected = vendaServicosIds.includes(sv.id);
+                    return (
+                      <TouchableOpacity
+                        key={sv.id}
+                        style={[
+                          { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 12 },
+                          isSelected && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
+                        ]}
+                        onPress={() => toggleServicoVenda(sv.id, sv.preco)}
+                        activeOpacity={0.8}
+                      >
+                        {/* Checkbox */}
+                        <View style={[
+                          { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+                          isSelected && { borderColor: COLORS.primary, backgroundColor: COLORS.primary }
+                        ]}>
+                          {isSelected && <Text style={{ color: '#fff', fontSize: 13, fontFamily: TYPOGRAPHY.fontFamily.sansBold }}>✓</Text>}
+                        </View>
+                        {/* Info do serviço */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 14, color: isSelected ? COLORS.primary : COLORS.textPrimary }}>{sv.nome}</Text>
+                          <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 12, color: COLORS.textSecondary, marginTop: 1 }}>{sv.duracao} min</Text>
+                        </View>
+                        {/* Preço */}
+                        <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.serifBold, fontSize: 16, color: COLORS.primary }}>{Number(sv.preco).toFixed(2)}€</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Total Calculado */}
+                {vendaServicosIds.length > 0 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.inputBackground, padding: 14, borderRadius: 12, marginBottom: 20 }}>
+                    <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: COLORS.textSecondary }}>
+                      {vendaServicosIds.length} serviço{vendaServicosIds.length > 1 ? 's' : ''} selecionado{vendaServicosIds.length > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.serifBold, fontSize: 20, color: COLORS.primary }}>
+                      {calcularTotalVenda().toFixed(2)}€
+                    </Text>
+                  </View>
+                )}
+
+                {/* Ajuste de valor manual */}
+                <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Valor Final (€)</Text>
+                <TextInput
+                  style={{
+                    backgroundColor: COLORS.inputBackground,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    fontFamily: TYPOGRAPHY.fontFamily.sans,
+                    fontSize: 16,
+                    color: COLORS.textPrimary,
+                    marginBottom: 20,
+                  }}
+                  value={vendaValorManual || (vendaServicosIds.length > 0 ? calcularTotalVenda().toFixed(2) : '')}
+                  onChangeText={setVendaValorManual}
+                  placeholder={vendaServicosIds.length > 0 ? calcularTotalVenda().toFixed(2) : '0.00'}
+                  placeholderTextColor={COLORS.textSecondary}
+                  keyboardType="numeric"
+                />
+
+                {/* Cliente - Lista vertical */}
+                <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.textSecondary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 }}>Cliente (opcional)</Text>
+                <View style={{ gap: 6, marginBottom: 8 }}>
+                  {/* Opção: sem cliente */}
                   <TouchableOpacity
-                    key={sv.id}
                     style={[
-                      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-                      vendaServicoId === sv.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' }
+                      { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 10 },
+                      vendaClienteId === '' && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
                     ]}
-                    onPress={() => {
-                      setVendaServicoId(sv.id);
-                      setVendaValor(String(sv.preco));
-                    }}
+                    onPress={() => setVendaClienteId('')}
                   >
-                    <Text style={[
-                      { fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 13, color: COLORS.textSecondary },
-                      vendaServicoId === sv.id && { color: COLORS.primary }
-                    ]}>{sv.nome}</Text>
-                    <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 12, color: COLORS.primary, marginTop: 2 }}>{Number(sv.preco).toFixed(2)}€</Text>
+                    <View style={[
+                      { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+                      vendaClienteId === '' && { borderColor: COLORS.primary }
+                    ]}>
+                      {vendaClienteId === '' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />}
+                    </View>
+                    <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 14, color: vendaClienteId === '' ? COLORS.primary : COLORS.textSecondary }}>Sem cliente específico</Text>
                   </TouchableOpacity>
-                ))}
+
+                  {/* Lista de clientes */}
+                  {clientes.slice(0, 10).map(cl => (
+                    <TouchableOpacity
+                      key={cl.id}
+                      style={[
+                        { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 10 },
+                        vendaClienteId === cl.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '08' }
+                      ]}
+                      onPress={() => setVendaClienteId(cl.id)}
+                    >
+                      <View style={[
+                        { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: COLORS.border, justifyContent: 'center', alignItems: 'center' },
+                        vendaClienteId === cl.id && { borderColor: COLORS.primary }
+                      ]}>
+                        {vendaClienteId === cl.id && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 14, color: vendaClienteId === cl.id ? COLORS.primary : COLORS.textPrimary }}>{cl.nome}</Text>
+                        {cl.telemovel ? <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sans, fontSize: 12, color: COLORS.textSecondary }}>{cl.telemovel}</Text> : null}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
               </View>
             </ScrollView>
 
-            {/* Seleção de Cliente */}
-            <Text style={[styles.modalSubTitle, { fontFamily: TYPOGRAPHY.fontFamily.sansBold, color: COLORS.textPrimary, marginBottom: 8 }]}>Cliente (opcional)</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  style={[
-                    { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-                    vendaClienteId === '' && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' }
-                  ]}
-                  onPress={() => setVendaClienteId('')}
-                >
-                  <Text style={[
-                    { fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 13, color: COLORS.textSecondary },
-                    vendaClienteId === '' && { color: COLORS.primary }
-                  ]}>Sem cliente</Text>
-                </TouchableOpacity>
-                {clientes.map(cl => (
-                  <TouchableOpacity
-                    key={cl.id}
-                    style={[
-                      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-                      vendaClienteId === cl.id && { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '15' }
-                    ]}
-                    onPress={() => setVendaClienteId(cl.id)}
-                  >
-                    <Text style={[
-                      { fontFamily: TYPOGRAPHY.fontFamily.sansSemibold, fontSize: 13, color: COLORS.textSecondary },
-                      vendaClienteId === cl.id && { color: COLORS.primary }
-                    ]}>{cl.nome.split(' ')[0]}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            {/* Valor */}
-            <Text style={[styles.modalSubTitle, { fontFamily: TYPOGRAPHY.fontFamily.sansBold, color: COLORS.textPrimary, marginBottom: 8 }]}>Valor (€)</Text>
-            <TextInput
-              style={{
-                backgroundColor: COLORS.inputBackground,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                borderRadius: 10,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                fontFamily: TYPOGRAPHY.fontFamily.sans,
-                fontSize: 16,
-                color: COLORS.textPrimary,
-                marginBottom: 16,
-              }}
-              value={vendaValor}
-              onChangeText={setVendaValor}
-              placeholder="0.00"
-              placeholderTextColor={COLORS.textSecondary}
-              keyboardType="numeric"
-            />
-
-            {/* Botões de ação */}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
+            {/* Rodapé do Modal */}
+            <View style={{ flexDirection: 'row', gap: 12, padding: 20, borderTopWidth: 1, borderTopColor: COLORS.border }}>
               <TouchableOpacity
-                style={[styles.modalCancelBtn, { flex: 1 }]}
+                style={[styles.modalCancelBtn, { flex: 1, marginTop: 0 }]}
                 onPress={() => setShowVendaModal(false)}
               >
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ flex: 2, backgroundColor: COLORS.primary, borderRadius: 12, justifyContent: 'center', alignItems: 'center', paddingVertical: 14, opacity: isSavingVenda ? 0.6 : 1 }}
-                disabled={isSavingVenda}
+                style={{ flex: 2, backgroundColor: vendaServicosIds.length === 0 ? COLORS.border : COLORS.primary, borderRadius: 12, justifyContent: 'center', alignItems: 'center', paddingVertical: 14, opacity: isSavingVenda ? 0.6 : 1 }}
+                disabled={isSavingVenda || vendaServicosIds.length === 0}
                 onPress={async () => {
-                  const valorNum = parseFloat(vendaValor);
-                  if (isNaN(valorNum) || valorNum <= 0) {
-                    Alert.alert('Erro', 'Introduza um valor válido.');
+                  const valorFinal = parseFloat(vendaValorManual) || calcularTotalVenda();
+                  if (valorFinal <= 0) {
+                    Alert.alert('Erro', 'O valor deve ser maior que zero.');
                     return;
                   }
-                  if (!vendaServicoId) {
-                    Alert.alert('Erro', 'Selecione um serviço.');
+                  if (vendaServicosIds.length === 0) {
+                    Alert.alert('Erro', 'Selecione pelo menos um serviço.');
                     return;
                   }
                   try {
@@ -825,19 +876,29 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     const hoje = new Date();
                     const dataStr = hoje.toISOString().split('T')[0];
                     const horaStr = hoje.toTimeString().split(' ')[0].substring(0, 5);
+                    // Inserir um agendamento por cada serviço (ou o primeiro como principal)
+                    const servicoPrincipalId = vendaServicosIds[0];
+                    const servicosExtra = vendaServicosIds.slice(1).map(id => {
+                      const sv = servicos.find(s => s.id === id);
+                      return { id, nome: sv?.nome || '', preco: sv?.preco || 0, duracao: sv?.duracao || 0 };
+                    });
                     const { error } = await supabase.from('agendamentos').insert([{
                       empresa_id: currentUser.empresa_id,
                       cliente_id: vendaClienteId || null,
-                      servico_id: vendaServicoId,
+                      servico_id: servicoPrincipalId,
+                      servicos_extra: servicosExtra.length > 0 ? JSON.stringify(servicosExtra) : null,
                       data: dataStr,
                       hora: horaStr,
                       status: 'concluido',
-                      valor_pago: valorNum,
-                      observacoes: vendaObservacoes || 'Venda direta registada',
+                      valor_pago: valorFinal,
+                      observacoes: 'Venda direta registada',
                     }]);
                     if (error) throw error;
-                    Alert.alert('Sucesso', 'Venda registada com sucesso!');
+                    Alert.alert('Sucesso', `Venda de ${valorFinal.toFixed(2)}€ registada com sucesso!`);
                     setShowVendaModal(false);
+                    setVendaServicosIds([]);
+                    setVendaClienteId('');
+                    setVendaValorManual('');
                     fetchData();
                   } catch (e: any) {
                     Alert.alert('Erro', `Não foi possível registar a venda: ${e.message}`);
@@ -847,7 +908,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 }}
               >
                 <Text style={{ fontFamily: TYPOGRAPHY.fontFamily.sansBold, fontSize: 14, color: COLORS.surface }}>
-                  {isSavingVenda ? 'A guardar...' : 'Registar Venda'}
+                  {isSavingVenda ? 'A guardar...' : vendaServicosIds.length === 0 ? 'Selecione serviços' : `Registar ${calcularTotalVenda().toFixed(2)}€`}
                 </Text>
               </TouchableOpacity>
             </View>
