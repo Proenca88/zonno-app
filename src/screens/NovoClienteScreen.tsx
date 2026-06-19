@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -47,6 +48,184 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
   const [nascimento, setNascimento] = useState('');
   const [morada, setMorada] = useState('');
   const [observacoes, setObservacoes] = useState('');
+
+  // Seletor de data de nascimento (calendário puro React Native)
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear() - 25); // Iniciar com ~25 anos atrás por UX
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [showYearSelector, setShowYearSelector] = useState(false);
+
+  const diasDaSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const nomesMeses = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const anos = [];
+  for (let y = new Date().getFullYear(); y >= 1920; y--) {
+    anos.push(y);
+  }
+
+  const getDaysInMonth = (month: number, year: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (month: number, year: number) => {
+    return new Date(year, month, 1).getDay();
+  };
+
+  const handleSelectDay = (day: number) => {
+    const dataFormatada = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setNascimento(dataFormatada);
+    setShowDatePicker(false);
+  };
+
+  const renderCalendarModal = () => {
+    const totalDays = getDaysInMonth(currentMonth, currentYear);
+    const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+
+    // Gerar grade de dias
+    const gridDays = [];
+    // Espaços vazios antes do dia 1
+    for (let i = 0; i < firstDay; i++) {
+      gridDays.push(null);
+    }
+    // Dias do mês
+    for (let d = 1; d <= totalDays; d++) {
+      gridDays.push(d);
+    }
+
+    return (
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={calendarStyles.modalOverlay}>
+          <View style={calendarStyles.modalContent}>
+            {/* Cabeçalho do Calendário */}
+            <View style={calendarStyles.header}>
+              <TouchableOpacity 
+                onPress={() => {
+                  if (currentMonth === 0) {
+                    setCurrentMonth(11);
+                    setCurrentYear(prev => prev - 1);
+                  } else {
+                    setCurrentMonth(prev => prev - 1);
+                  }
+                }}
+                style={calendarStyles.navButton}
+              >
+                <Text style={calendarStyles.navButtonText}>{"<"}</Text>
+              </TouchableOpacity>
+              
+              <View style={calendarStyles.headerTitleContainer}>
+                <TouchableOpacity onPress={() => setShowYearSelector(!showYearSelector)} style={calendarStyles.headerTitleBtn}>
+                  <Text style={calendarStyles.headerTitleText}>
+                    {nomesMeses[currentMonth]} {currentYear} ▾
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity 
+                onPress={() => {
+                  if (currentMonth === 11) {
+                    setCurrentMonth(0);
+                    setCurrentYear(prev => prev + 1);
+                  } else {
+                    setCurrentMonth(prev => prev + 1);
+                  }
+                }}
+                style={calendarStyles.navButton}
+              >
+                <Text style={calendarStyles.navButtonText}>{">"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showYearSelector ? (
+              /* Seletor de Ano Rápido */
+              <View style={calendarStyles.yearSelectorContainer}>
+                <Text style={calendarStyles.selectorTitle}>Selecione o Ano de Nascimento</Text>
+                <ScrollView style={calendarStyles.yearScrollView} contentContainerStyle={{ paddingBottom: 16 }} nestedScrollEnabled={true}>
+                  <View style={calendarStyles.yearGrid}>
+                    {anos.map(y => (
+                      <TouchableOpacity 
+                        key={y} 
+                        style={[
+                          calendarStyles.yearItem,
+                          y === currentYear && calendarStyles.yearItemActive
+                        ]}
+                        onPress={() => {
+                          setCurrentYear(y);
+                          setShowYearSelector(false);
+                        }}
+                      >
+                        <Text style={[
+                          calendarStyles.yearItemText,
+                          y === currentYear && calendarStyles.yearItemTextActive
+                        ]}>
+                          {y}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+                <TouchableOpacity onPress={() => setShowYearSelector(false)} style={calendarStyles.closeSelectorBtn}>
+                  <Text style={calendarStyles.closeSelectorBtnText}>Voltar para o Calendário</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* Grade do Calendário */
+              <View style={calendarStyles.calendarGrid}>
+                {/* Dias da semana */}
+                <View style={calendarStyles.weekDaysRow}>
+                  {diasDaSemana.map((day, idx) => (
+                    <Text key={idx} style={calendarStyles.weekDayText}>{day}</Text>
+                  ))}
+                </View>
+
+                {/* Dias do mês */}
+                <View style={calendarStyles.daysGrid}>
+                  {gridDays.map((day, idx) => {
+                    const isSelected = day && nascimento === `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        disabled={!day}
+                        style={[
+                          calendarStyles.dayCell,
+                          !day && calendarStyles.dayCellEmpty,
+                          isSelected && calendarStyles.dayCellSelected
+                        ]}
+                        onPress={() => day && handleSelectDay(day)}
+                      >
+                        {day && (
+                          <Text style={[
+                            calendarStyles.dayText,
+                            isSelected && calendarStyles.dayTextSelected
+                          ]}>
+                            {day}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Ações Inferiores */}
+            <View style={calendarStyles.footerActions}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)} style={calendarStyles.cancelBtn}>
+                <Text style={calendarStyles.cancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   // Estado dinâmico para os campos específicos de cada nicho
   const [nicheValues, setNicheValues] = useState<Record<string, string>>({});
@@ -195,7 +374,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* TopBar */}
         <View style={styles.header}>
@@ -206,7 +385,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           <View style={{ width: 40 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.introSection}>
             <Text style={styles.helperText}>
               {clienteEdicao 
@@ -276,18 +455,30 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
             {/* Data de Nascimento */}
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>Data de Nascimento</Text>
-              <TextInput
+              <TouchableOpacity
                 style={[
                   styles.input,
-                  focusedField === 'nascimento' && styles.inputFocused
+                  styles.dateInputContainer,
+                  showDatePicker && styles.inputFocused
                 ]}
-                value={nascimento}
-                onChangeText={setNascimento}
-                placeholder="AAAA-MM-DD (Ex: 1995-10-15)"
-                placeholderTextColor="#9ca3af"
-                onFocus={() => setFocusedField('nascimento')}
-                onBlur={() => setFocusedField(null)}
-              />
+                onPress={() => {
+                  // Se houver uma data válida já selecionada, inicializar o calendário nela
+                  if (nascimento && nascimento.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    const parts = nascimento.split('-');
+                    setCurrentYear(parseInt(parts[0]));
+                    setCurrentMonth(parseInt(parts[1]) - 1);
+                  }
+                  setShowDatePicker(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.dateInputText,
+                  !nascimento && styles.dateInputPlaceholder
+                ]}>
+                  {nascimento || 'Selecionar data de nascimento...'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Morada */}
@@ -374,6 +565,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {renderCalendarModal()}
     </SafeAreaView>
   );
 };
@@ -500,5 +692,184 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: TYPOGRAPHY.fontFamily.sansBold,
     color: COLORS.surface,
+  },
+  dateInputContainer: {
+    justifyContent: 'center',
+  },
+  dateInputText: {
+    fontSize: 15,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textPrimary,
+  },
+  dateInputPlaceholder: {
+    color: '#9ca3af',
+  },
+});
+
+const calendarStyles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  navButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  navButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitleBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+  },
+  headerTitleText: {
+    fontSize: 15,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.textPrimary,
+  },
+  calendarGrid: {
+    width: '100%',
+  },
+  weekDaysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  weekDayText: {
+    width: 36,
+    textAlign: 'center',
+    fontSize: 12,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: '#9ca3af',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+  },
+  dayCell: {
+    width: '14.28%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  dayCellEmpty: {
+    backgroundColor: 'transparent',
+  },
+  dayCellSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  dayText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textPrimary,
+  },
+  dayTextSelected: {
+    color: COLORS.surface,
+    fontWeight: 'bold',
+  },
+  yearSelectorContainer: {
+    height: 240,
+    alignItems: 'center',
+  },
+  selectorTitle: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.textSecondary,
+    marginBottom: 12,
+  },
+  yearScrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  yearGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  yearItem: {
+    width: '30%',
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  yearItemActive: {
+    backgroundColor: COLORS.primary,
+  },
+  yearItemText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textPrimary,
+  },
+  yearItemTextActive: {
+    color: COLORS.surface,
+    fontWeight: 'bold',
+  },
+  closeSelectorBtn: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+  },
+  closeSelectorBtnText: {
+    fontSize: 13,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.textPrimary,
+  },
+  footerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 12,
+  },
+  cancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansSemibold,
+    color: COLORS.textSecondary,
   },
 });
