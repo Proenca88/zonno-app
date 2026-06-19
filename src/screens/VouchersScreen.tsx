@@ -176,33 +176,50 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
   };
 
   const handleDeleteVoucher = (id: string) => {
-    Alert.alert(
-      'Eliminar Voucher',
-      'Tem a certeza que deseja eliminar permanentemente este voucher?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('vouchers')
-                .delete()
-                .eq('id', id);
+    const executarEliminacao = async () => {
+      try {
+        const { error } = await supabase
+          .from('vouchers')
+          .delete()
+          .eq('id', id);
 
-              if (error) throw error;
-              
-              setVouchers(prev => prev.filter(v => v.id !== id));
-              Alert.alert('Sucesso', 'Voucher eliminado.');
-            } catch (err: any) {
-              console.error(err);
-              Alert.alert('Erro', 'Não foi possível eliminar o voucher.');
-            }
-          }
+        if (error) throw error;
+        
+        setVouchers(prev => prev.filter(v => v.id !== id));
+        if (Platform.OS === 'web') {
+          window.alert('Voucher eliminado.');
+        } else {
+          Alert.alert('Sucesso', 'Voucher eliminado.');
         }
-      ]
-    );
+      } catch (err: any) {
+        console.error(err);
+        if (Platform.OS === 'web') {
+          window.alert('Não foi possível eliminar o voucher.');
+        } else {
+          Alert.alert('Erro', 'Não foi possível eliminar o voucher.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmar = window.confirm('Tem a certeza que deseja eliminar permanentemente este voucher?');
+      if (confirmar) {
+        executarEliminacao();
+      }
+    } else {
+      Alert.alert(
+        'Eliminar Voucher',
+        'Tem a certeza que deseja eliminar permanentemente este voucher?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Eliminar', 
+            style: 'destructive',
+            onPress: executarEliminacao
+          }
+        ]
+      );
+    }
   };
 
   // Estatísticas Bento Grid
