@@ -573,6 +573,9 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    ...Platform.select({
+      web: { height: '100vh' as any }
+    }),
     backgroundColor: COLORS.background,
   },
   header: {

@@ -832,15 +832,13 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    ...Platform.select({
+      web: { height: '100vh' as any }
+    }),
     backgroundColor: COLORS.background,
   },
   scrollView: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        overflowY: 'auto' as any,
-      }
-    })
   },
   header: {
     height: 64,
