@@ -414,7 +414,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           renderItem={() => (
-            <>
+            <View>
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
@@ -715,7 +715,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               <Text style={styles.btnEditText}>EDITAR CLIENTE</Text>
             </TouchableOpacity>
           </View>
-            </>
+            </View>
           )}
         />
       ) : (

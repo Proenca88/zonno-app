@@ -393,7 +393,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}
           renderItem={() => (
-            <>
+            <View>
           <View style={styles.introSection}>
             <Text style={styles.helperText}>
               {clienteEdicao 
@@ -571,7 +571,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
               )}
             </TouchableOpacity>
           </View>
-            </>
+            </View>
           )}
         />
       </KeyboardAvoidingView>
