@@ -65,6 +65,7 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
 
   const fetchVouchersAndServices = async () => {
     try {
+      console.log('fetchVouchersAndServices: Iniciando com empresa_id =', currentUser?.empresa_id);
       const [vResult, sResult, cResult] = await Promise.all([
         supabase
           .from('vouchers')
@@ -82,6 +83,15 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
           .order('nome', { ascending: true })
       ]);
 
+      console.log('fetchVouchersAndServices: Sucesso!', {
+        vouchersCount: vResult.data?.length || 0,
+        servicosCount: sResult.data?.length || 0,
+        clientesCount: cResult.data?.length || 0,
+        vError: vResult.error,
+        sError: sResult.error,
+        cError: cResult.error
+      });
+
       if (vResult.error) throw vResult.error;
       if (sResult.error) throw sResult.error;
       if (cResult.error) throw cResult.error;
@@ -90,7 +100,7 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
       setServicos(sResult.data || []);
       setClientes(cResult.data || []);
     } catch (e) {
-      console.error(e);
+      console.error('fetchVouchersAndServices erro:', e);
       Alert.alert('Erro', 'Não foi possível carregar os dados.');
     } finally {
       setIsLoading(false);
@@ -99,8 +109,12 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
   };
 
   useEffect(() => {
-    fetchVouchersAndServices();
-  }, []);
+    if (currentUser?.empresa_id) {
+      fetchVouchersAndServices();
+    } else {
+      console.log('useEffect: empresa_id nulo ou indefinido na montagem');
+    }
+  }, [currentUser?.empresa_id]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -598,29 +612,27 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
 
                   {showClienteDropdown && (
                     <View style={styles.dropdownContent}>
-                      <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                      <TouchableOpacity
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setClienteId(null);
+                          setShowClienteDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>Nenhum (Voucher Geral)</Text>
+                      </TouchableOpacity>
+                      {clientes.map((c) => (
                         <TouchableOpacity
+                          key={c.id}
                           style={styles.dropdownItem}
                           onPress={() => {
-                            setClienteId(null);
+                            setClienteId(c.id);
                             setShowClienteDropdown(false);
                           }}
                         >
-                          <Text style={styles.dropdownItemText}>Nenhum (Voucher Geral)</Text>
+                          <Text style={styles.dropdownItemText}>{c.nome}</Text>
                         </TouchableOpacity>
-                        {clientes.map((c) => (
-                          <TouchableOpacity
-                            key={c.id}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              setClienteId(c.id);
-                              setShowClienteDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>{c.nome}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -644,29 +656,27 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
 
                   {showServicoDropdown && (
                     <View style={styles.dropdownContent}>
-                      <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                      <TouchableOpacity
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setServicoId(null);
+                          setShowServicoDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>Qualquer Serviço (Geral)</Text>
+                      </TouchableOpacity>
+                      {servicos.map((s) => (
                         <TouchableOpacity
+                          key={s.id}
                           style={styles.dropdownItem}
                           onPress={() => {
-                            setServicoId(null);
+                            setServicoId(s.id);
                             setShowServicoDropdown(false);
                           }}
                         >
-                          <Text style={styles.dropdownItemText}>Qualquer Serviço (Geral)</Text>
+                          <Text style={styles.dropdownItemText}>{s.nome} ({s.preco}€)</Text>
                         </TouchableOpacity>
-                        {servicos.map((s) => (
-                          <TouchableOpacity
-                            key={s.id}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              setServicoId(s.id);
-                              setShowServicoDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>{s.nome} ({s.preco}€)</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
+                      ))}
                     </View>
                   )}
                 </View>
