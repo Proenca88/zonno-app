@@ -385,15 +385,12 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
           <View style={{ width: 40 }} />
         </View>
 
-        <FlatList
+        <ScrollView
           style={{ flex: 1 }}
-          data={[{}]}
-          keyExtractor={() => 'form'}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}
-          renderItem={() => (
-            <View>
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.introSection}>
             <Text style={styles.helperText}>
               {clienteEdicao 
@@ -571,9 +568,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
               )}
             </TouchableOpacity>
           </View>
-            </View>
-          )}
-        />
+        </ScrollView>
       </KeyboardAvoidingView>
       {renderCalendarModal()}
     </SafeAreaView>
@@ -608,7 +603,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 48,

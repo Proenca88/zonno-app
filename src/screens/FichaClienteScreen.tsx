@@ -407,14 +407,12 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : cliente ? (
-        <FlatList
+        <ScrollView
           style={{ flex: 1 }}
-          data={[{}]}
-          keyExtractor={() => 'profile'}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
-          renderItem={() => (
-            <View>
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Avatar Grande & Nome */}
           <View style={styles.profileHeader}>
             <TouchableOpacity onPress={handleAvatarPress} style={styles.avatarWrapper} activeOpacity={0.8}>
@@ -715,9 +713,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
               <Text style={styles.btnEditText}>EDITAR CLIENTE</Text>
             </TouchableOpacity>
           </View>
-            </View>
-          )}
-        />
+        </ScrollView>
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Cliente não encontrado.</Text>
@@ -873,7 +869,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 80,
