@@ -13,8 +13,8 @@ import {
   useWindowDimensions,
   Alert,
   Platform,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Cliente, Usuario, Empresa } from '../types';
@@ -408,6 +408,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <FlatList
+          style={{ flex: 1 }}
           data={[{}]}
           keyExtractor={() => 'profile'}
           showsVerticalScrollIndicator={false}

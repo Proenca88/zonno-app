@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +13,6 @@ import {
   View,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
 import { Usuario, Empresa } from '../types';
@@ -386,6 +386,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
         </View>
 
         <FlatList
+          style={{ flex: 1 }}
           data={[{}]}
           keyExtractor={() => 'form'}
           showsVerticalScrollIndicator={false}
