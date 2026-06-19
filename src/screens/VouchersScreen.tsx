@@ -216,6 +216,20 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
   const formatarData = (dataStr: string) => {
     if (!dataStr) return 'Sem validade';
     try {
+      const parts = dataStr.split('-');
+      if (parts.length === 3) {
+        // parts = [ano, mes, dia]
+        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const dia = parseInt(parts[2], 10);
+        const mesIndex = parseInt(parts[1], 10) - 1;
+        const mesNome = meses[mesIndex] || '';
+        return `${dia} ${mesNome} ${parts[0]}`;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    
+    try {
       const d = new Date(dataStr);
       if (isNaN(d.getTime())) return dataStr;
       return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
