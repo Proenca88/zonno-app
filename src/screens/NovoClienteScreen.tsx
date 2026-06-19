@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  ScrollView,
   SafeAreaView,
   StyleSheet,
   Text,
