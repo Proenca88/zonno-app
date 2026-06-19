@@ -49,7 +49,6 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
 }) => {
   const { width, height } = useWindowDimensions();
   const isDesktop = width >= 768;
-  const scrollViewHeight = Platform.OS === 'web' ? height - 64 : undefined;
 
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
@@ -333,7 +332,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   const historicoTecnico = agendamentos.filter(ag => ag.observacoes && ag.observacoes.trim() !== '');
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, Platform.OS === 'web' && { height }]}>
       {/* TopBar */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
@@ -351,10 +350,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         </View>
       ) : cliente ? (
         <ScrollView 
-          style={[
-            styles.scrollView, 
-            scrollViewHeight ? { height: scrollViewHeight } : null
-          ]}
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent} 
           keyboardShouldPersistTaps="handled"
         >

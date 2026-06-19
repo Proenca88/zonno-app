@@ -14,6 +14,7 @@ import {
   Alert,
   Linking,
   Modal,
+  useWindowDimensions,
 } from 'react-native';
 import { COLORS, TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
@@ -33,6 +34,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onLogoutClick,
   navigation,
 }) => {
+  const { height } = useWindowDimensions();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -335,7 +337,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, Platform.OS === 'web' && { height }]}>
       {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
