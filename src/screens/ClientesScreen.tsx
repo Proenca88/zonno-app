@@ -12,7 +12,8 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Cliente, Usuario } from '../types';
 import { MagnifyingGlass, Plus, Envelope, Phone, DotsThreeVertical } from 'phosphor-react-native';
@@ -30,6 +31,8 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({
   onAddClienteClick,
   onNavigateToAgenda,
 }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -261,7 +264,7 @@ export const ClientesScreen: React.FC<ClientesScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,

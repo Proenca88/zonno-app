@@ -1,9 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Linking } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { ShieldWarning, Globe, WhatsappLogo, SignOut } from 'phosphor-react-native';
 
 export function SubscriptionExpiredScreen({ route, navigation }: any) {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const { empresaNome } = route.params || { empresaNome: 'O seu Espaço' };
 
   const handleSupport = () => {
@@ -73,7 +76,7 @@ export function SubscriptionExpiredScreen({ route, navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

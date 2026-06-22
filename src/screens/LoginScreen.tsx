@@ -10,7 +10,8 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Usuario, Empresa } from '../types';
 import { Eye, EyeSlash, Fingerprint } from 'phosphor-react-native';
@@ -21,6 +22,8 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuccess }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -228,7 +231,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuc
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     backgroundColor: COLORS.background,

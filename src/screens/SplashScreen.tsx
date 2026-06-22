@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface SplashScreenProps {
   onTimeout: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onTimeout }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       onTimeout();
@@ -31,7 +35,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onTimeout }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -47,7 +51,7 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 48,
     fontFamily: TYPOGRAPHY.fontFamily.serifBold,
-    color: '#111827', // Cor escura / carvão profunda do Stitch
+    color: COLORS.textPrimary, // Stitch style dynamic text
     letterSpacing: -0.5,
   },
   subtitleText: {

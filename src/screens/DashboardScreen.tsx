@@ -17,7 +17,8 @@ import {
   TextInput,
   useWindowDimensions,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Agendamento, Cliente, Servico, Usuario } from '../types';
 import { Calendar, Users, SignOut, Plus, Phone, Chat, Clock, TrendUp, CurrencyDollar, X } from 'phosphor-react-native';
@@ -35,6 +36,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onLogoutClick,
   navigation,
 }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
+
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -994,11 +998,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    height: Platform.OS === 'web' ? '100vh' : 'auto',
+    height: (Platform.OS === 'web' ? '100vh' : 'auto') as any,
   },
   scrollView: {
     flex: 1,

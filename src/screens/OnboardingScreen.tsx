@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Dimensions, ScrollView } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface OnboardingScreenProps {
   onStartClick: () => void;
@@ -30,6 +31,8 @@ const SLIDES = [
 ];
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onStartClick }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -129,7 +132,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onStartClick
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

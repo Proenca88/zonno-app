@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { CaretLeft } from 'phosphor-react-native';
 import { supabase } from '../remote/supabase';
 
@@ -24,6 +25,8 @@ function generateUUID() {
 }
 
 export function RegisterScreen({ navigation }: any) {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [nomeResponsavel, setNomeResponsavel] = useState('');
   const [nomeComercial, setNomeComercial] = useState('');
   const [nicho, setNicho] = useState<'estetica' | 'barbearia' | 'cabeleireiro' | 'tattoo' | 'clinica' | 'outros' | null>(null);
@@ -309,7 +312,7 @@ export function RegisterScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

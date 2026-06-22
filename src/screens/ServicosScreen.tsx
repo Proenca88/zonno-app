@@ -14,7 +14,8 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Servico, Categoria, Usuario, Empresa } from '../types';
 import { Sparkle, Plus, Clock, Tag, Trash, FloppyDisk, Scissors, PaintBrush, Stethoscope, PencilSimple, X } from 'phosphor-react-native';
@@ -69,6 +70,8 @@ interface ServicosScreenProps {
 }
 
 export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [selectedCategoria, setSelectedCategoria] = useState<string | null>(null); // null means "Todos"
@@ -775,7 +778,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
                                 <PencilSimple size={16} color={COLORS.textPrimary} />
                               </TouchableOpacity>
                               <TouchableOpacity 
-                                style={{ padding: 8, backgroundColor: COLORS.status.cancelado.bg, borderRadius: 6 }}
+                                style={{ padding: 8, backgroundColor: COLORS.status.cancelado.background, borderRadius: 6 }}
                                 onPress={() => handleDeleteCategoria(cat.id, cat.nome)}
                               >
                                 <Trash size={16} color={COLORS.status.cancelado.text} />
@@ -796,7 +799,7 @@ export function ServicosScreen({ currentUser, empresa }: ServicosScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,

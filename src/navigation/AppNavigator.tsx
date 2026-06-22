@@ -1,8 +1,8 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { COLORS } from '../theme/colors';
 import { TYPOGRAPHY } from '../theme/typography';
+import { useTheme } from '../context/ThemeContext';
 import { Platform } from 'react-native';
 
 // Importar ícones do Phosphor
@@ -35,6 +35,7 @@ const Tab = createBottomTabNavigator();
 
 // Stack de Autenticação (Fluxo Não-Logado)
 export function AuthNavigator({ onLoginSuccess }: { onLoginSuccess: (user: Usuario, empresa: Empresa) => void }) {
+  const { COLORS } = useTheme();
   return (
     <Stack.Navigator
       initialRouteName="Splash"
@@ -69,6 +70,7 @@ function TabNavigator({
   empresa: Empresa; 
   onLogout: () => void 
 }) {
+  const { COLORS } = useTheme();
   // Nome comercial dinâmico com fallback (White-Label)
   const headerTitle = empresa?.nome_comercial || 'Zonno';
 
@@ -194,6 +196,7 @@ export function MainNavigator({
   empresa: Empresa; 
   onLogout: () => void 
 }) {
+  const { COLORS } = useTheme();
   return (
     <Stack.Navigator
       screenOptions={{

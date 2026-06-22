@@ -15,7 +15,8 @@ import {
   Platform,
   SafeAreaView,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Cliente, Usuario, Empresa } from '../types';
 import { 
@@ -52,6 +53,8 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   onBackClick,
   navigation,
 }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const { width, height } = useWindowDimensions();
   const isDesktop = width >= 768;
 
@@ -829,7 +832,7 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,

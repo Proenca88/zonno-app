@@ -14,7 +14,8 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Usuario, Voucher, Servico, Cliente } from '../types';
 import { 
@@ -41,6 +42,9 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
   currentUser,
   navigation
 }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
+  const calendarStyles = React.useMemo(() => createCalendarStyles(COLORS), [COLORS]);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [clientes, setClientes] = useState<{ id: string; nome: string }[]>([]);
@@ -426,15 +430,15 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
                         disabled={!day}
                         style={[
                           calendarStyles.dayCell,
-                          !day && calendarStyles.dayCellEmpty,
-                          isSelected && calendarStyles.dayCellSelected
+                          !day ? calendarStyles.dayCellEmpty : null,
+                          isSelected ? calendarStyles.dayCellSelected : null
                         ]}
                         onPress={() => day && handleSelectDayCalendar(day)}
                       >
                         {day && (
                           <Text style={[
                             calendarStyles.dayText,
-                            isSelected && calendarStyles.dayTextSelected
+                            isSelected ? calendarStyles.dayTextSelected : null
                           ]}>
                             {day}
                           </Text>
@@ -485,7 +489,7 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
               <TouchableOpacity 
                 style={styles.createBtn}
                 onPress={abrirModalCriarVoucher}
-                activeOpacity={0.9}eOpacity={0.9}
+                activeOpacity={0.9}
               >
                 <Plus size={16} color={COLORS.surface} weight="bold" />
                 <Text style={styles.createBtnText}>Criar Novo Voucher</Text>
@@ -770,7 +774,7 @@ export const VouchersScreen: React.FC<VouchersScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background
@@ -1162,7 +1166,7 @@ const styles = StyleSheet.create({
   }
 });
 
-const calendarStyles = StyleSheet.create({
+const createCalendarStyles = (COLORS: any) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',

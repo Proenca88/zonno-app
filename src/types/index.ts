@@ -65,6 +65,7 @@ export interface Categoria {
   id: string;
   empresa_id: string;
   nome: string;
+  cor?: string | null;
   created_at?: string;
 }
 

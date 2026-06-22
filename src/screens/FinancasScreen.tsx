@@ -11,7 +11,8 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Agendamento, Cliente, Servico, Usuario, Empresa } from '../types';
 import { TrendUp, Wallet, ArrowUpRight, Plus, Sparkle, Scissors, PaintBrush, Stethoscope } from 'phosphor-react-native';
@@ -23,6 +24,8 @@ interface FinancasScreenProps {
 }
 
 export function FinancasScreen({ currentUser, empresa, navigation }: FinancasScreenProps) {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -279,7 +282,7 @@ export function FinancasScreen({ currentUser, empresa, navigation }: FinancasScr
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,

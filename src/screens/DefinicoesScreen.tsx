@@ -13,8 +13,9 @@ import {
   SafeAreaView,
   Switch
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
 import { supabase } from '../remote/supabase';
+import { useTheme } from '../context/ThemeContext';
 import { Usuario, Empresa } from '../types';
 import { 
   Storefront, 
@@ -67,13 +68,15 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
   navigation,
   onLogoutClick
 }) => {
+  const { isDark: darkMode, toggleTheme, COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
+
   const [nomeComercial, setNomeComercial] = useState(empresaInicial?.nome_comercial || '');
   const [nicho, setNicho] = useState<string>(empresaInicial?.nicho || 'estetica');
   const [nif, setNif] = useState('');
   const [morada, setMorada] = useState('');
   const [telefone, setTelefone] = useState('');
   const [emailNegocio, setEmailNegocio] = useState('');
-  const [darkMode, setDarkMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [statusSubscricao, setStatusSubscricao] = useState(empresaInicial?.status_subscricao || 'teste');
@@ -479,7 +482,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
               </View>
               <Switch
                 value={darkMode}
-                onValueChange={setDarkMode}
+                onValueChange={toggleTheme}
                 trackColor={{ false: '#d1d5db', true: '#a3a3a3' }}
                 thumbColor={darkMode ? COLORS.primary : '#f4f4f5'}
               />
@@ -590,7 +593,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background

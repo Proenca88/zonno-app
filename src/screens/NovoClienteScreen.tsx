@@ -15,7 +15,8 @@ import {
   Modal,
   useWindowDimensions,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Usuario, Empresa } from '../types';
 import { CaretLeft } from 'phosphor-react-native';
@@ -44,6 +45,9 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
   onSuccess,
   clienteEdicao,
 }) => {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
+  const calendarStyles = React.useMemo(() => createCalendarStyles(COLORS), [COLORS]);
   const { height } = useWindowDimensions();
   const [nome, setNome] = useState('');
   const [telemovel, setTelemovel] = useState('');
@@ -64,7 +68,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ];
 
-  const anos = [];
+  const anos: number[] = [];
   for (let y = new Date().getFullYear(); y >= 1920; y--) {
     anos.push(y);
   }
@@ -198,15 +202,15 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
                         disabled={!day}
                         style={[
                           calendarStyles.dayCell,
-                          !day && calendarStyles.dayCellEmpty,
-                          isSelected && calendarStyles.dayCellSelected
+                          !day ? calendarStyles.dayCellEmpty : null,
+                          isSelected ? calendarStyles.dayCellSelected : null
                         ]}
                         onPress={() => day && handleSelectDay(day)}
                       >
                         {day && (
                           <Text style={[
                             calendarStyles.dayText,
-                            isSelected && calendarStyles.dayTextSelected
+                            isSelected ? calendarStyles.dayTextSelected : null
                           ]}>
                             {day}
                           </Text>
@@ -573,7 +577,7 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -717,7 +721,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const calendarStyles = StyleSheet.create({
+const createCalendarStyles = (COLORS: any) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',

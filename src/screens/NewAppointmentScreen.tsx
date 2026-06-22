@@ -13,7 +13,8 @@ import {
   SafeAreaView,
   Modal,
 } from 'react-native';
-import { COLORS, TYPOGRAPHY } from '../theme';
+import { TYPOGRAPHY } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
 import { Usuario, Empresa } from '../types';
 import { CaretLeft, Calendar, Clock, CurrencyEur, Note, User, Sparkle } from 'phosphor-react-native';
@@ -44,6 +45,8 @@ const SLOTS_HORARIOS = [
 ];
 
 export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAppointmentScreenProps) {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const [clientes, setClientes] = useState<ClienteData[]>([]);
   const [servicos, setServicos] = useState<ServicoData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -515,7 +518,7 @@ export function NewAppointmentScreen({ currentUser, empresa, navigation }: NewAp
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -1,10 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
-import { COLORS } from '../theme/colors';
 import { TYPOGRAPHY } from '../theme/typography';
+import { useTheme } from '../context/ThemeContext';
 import { CaretLeft } from 'phosphor-react-native';
 
 export function CheckoutScreen({ navigation, route }: any) {
+  const { COLORS } = useTheme();
+  const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
   const { agendamentoId } = route.params || { agendamentoId: '' };
 
   return (
@@ -22,7 +24,7 @@ export function CheckoutScreen({ navigation, route }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
