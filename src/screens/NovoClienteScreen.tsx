@@ -375,207 +375,204 @@ export const NovoClienteScreen: React.FC<NovoClienteScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* TopBar */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
-            <CaretLeft size={24} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{clienteEdicao ? 'Editar Cliente' : 'Novo Cliente'}</Text>
-          <View style={{ width: 40 }} />
-        </View>
+      {/* TopBar */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBackClick} style={styles.backButton} activeOpacity={0.7}>
+          <CaretLeft size={24} color={COLORS.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{clienteEdicao ? 'Editar Cliente' : 'Novo Cliente'}</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-        <ScrollView
-          style={[
-            { flex: 1 },
-            Platform.OS === 'web' ? { height: height - 64, overflowY: 'auto' as any } : {}
-          ]}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.introSection}>
-            <Text style={styles.helperText}>
-              {clienteEdicao 
-                ? 'Edite as informações e especificações do registo do cliente.' 
-                : 'Crie um novo registo de cliente na sua base de dados Zonno.'}
-            </Text>
-          </View>
-
-          {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-
-          <View style={styles.form}>
-            {/* Nome Completo */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Nome Completo *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedField === 'nome' && styles.inputFocused
-                ]}
-                value={nome}
-                onChangeText={(text) => { setNome(text); setErrorMessage(null); }}
-                placeholder="Nome Completo do Cliente"
-                placeholderTextColor="#9ca3af"
-                onFocus={() => setFocusedField('nome')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
-
-            {/* Telemóvel */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Telemóvel *</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedField === 'telemovel' && styles.inputFocused
-                ]}
-                value={telemovel}
-                onChangeText={(text) => { setTelemovel(text.replace(/[^0-9]/g, '')); setErrorMessage(null); }}
-                placeholder="9xxxxxxxx"
-                keyboardType="number-pad"
-                maxLength={9}
-                placeholderTextColor="#9ca3af"
-                onFocus={() => setFocusedField('telemovel')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
-
-            {/* E-mail */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>E-mail</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedField === 'email' && styles.inputFocused
-                ]}
-                value={email}
-                onChangeText={(text) => { setEmail(text); setErrorMessage(null); }}
-                placeholder="nome@dominio.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor="#9ca3af"
-                onFocus={() => setFocusedField('email')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
-
-            {/* Data de Nascimento */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Data de Nascimento</Text>
-              <TouchableOpacity
-                style={[
-                  styles.input,
-                  styles.dateInputContainer,
-                  showDatePicker && styles.inputFocused
-                ]}
-                onPress={() => {
-                  // Se houver uma data válida já selecionada, inicializar o calendário nela
-                  if (nascimento && nascimento.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    const parts = nascimento.split('-');
-                    setCurrentYear(parseInt(parts[0]));
-                    setCurrentMonth(parseInt(parts[1]) - 1);
-                  }
-                  setShowDatePicker(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.dateInputText,
-                  !nascimento && styles.dateInputPlaceholder
-                ]}>
-                  {nascimento || 'Selecionar data de nascimento...'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Morada */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Morada</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  focusedField === 'morada' && styles.inputFocused
-                ]}
-                value={morada}
-                onChangeText={setMorada}
-                placeholder="Morada do Cliente"
-                placeholderTextColor="#9ca3af"
-                onFocus={() => setFocusedField('morada')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
-
-            {/* Observações Gerais */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Observações Gerais</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.textArea,
-                  focusedField === 'observacoes' && styles.inputFocused
-                ]}
-                value={observacoes}
-                onChangeText={setObservacoes}
-                placeholder="Escreva observações de atendimento gerais..."
-                multiline={true}
-                numberOfLines={3}
-                placeholderTextColor="#9ca3af"
-                onFocus={() => setFocusedField('observacoes')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
-
-            {/* Separador Visual de Informações Adicionais */}
-            <View style={styles.separatorContainer}>
-              <View style={styles.separatorLine} />
-              <Text style={styles.separatorText}>
-                Dados Adicionais ({niches.find(n => n.id === empresa.nicho)?.label || 'Outros'})
+      <FlatList
+        data={[]}
+        keyExtractor={() => ''}
+        renderItem={() => null}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.introSection}>
+              <Text style={styles.helperText}>
+                {clienteEdicao
+                  ? 'Edite as informações e especificações do registo do cliente.'
+                  : 'Crie um novo registo de cliente na sua base de dados Zonno.'}
               </Text>
-              <View style={styles.separatorLine} />
             </View>
 
-            {/* Campos Dinâmicos do Nicho */}
-            {getNicheFields().map((field) => (
-              <View key={field.key} style={styles.inputWrapper}>
-                <Text style={styles.label}>{field.label}</Text>
+            {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+
+            <View style={styles.form}>
+              {/* Nome Completo */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Nome Completo *</Text>
                 <TextInput
                   style={[
                     styles.input,
-                    field.type === 'textarea' && styles.textArea,
-                    focusedField === field.key && styles.inputFocused
+                    focusedField === 'nome' && styles.inputFocused
                   ]}
-                  value={nicheValues[field.key] || ''}
-                  onChangeText={(text) => setNicheValues({ ...nicheValues, [field.key]: text })}
-                  placeholder={field.placeholder}
+                  value={nome}
+                  onChangeText={(text) => { setNome(text); setErrorMessage(null); }}
+                  placeholder="Nome Completo do Cliente"
                   placeholderTextColor="#9ca3af"
-                  multiline={field.type === 'textarea'}
-                  numberOfLines={field.type === 'textarea' ? 4 : 1}
-                  onFocus={() => setFocusedField(field.key)}
+                  onFocus={() => setFocusedField('nome')}
                   onBlur={() => setFocusedField(null)}
                 />
               </View>
-            ))}
 
-            {/* Botão Guardar */}
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleSave}
-              disabled={isLoading}
-              activeOpacity={0.9}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={COLORS.surface} size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Guardar Cliente</Text>
-              )}
-            </TouchableOpacity>
+              {/* Telemóvel */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Telemóvel *</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    focusedField === 'telemovel' && styles.inputFocused
+                  ]}
+                  value={telemovel}
+                  onChangeText={(text) => { setTelemovel(text.replace(/[^0-9]/g, '')); setErrorMessage(null); }}
+                  placeholder="9xxxxxxxx"
+                  keyboardType="number-pad"
+                  maxLength={9}
+                  placeholderTextColor="#9ca3af"
+                  onFocus={() => setFocusedField('telemovel')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+
+              {/* E-mail */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>E-mail</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    focusedField === 'email' && styles.inputFocused
+                  ]}
+                  value={email}
+                  onChangeText={(text) => { setEmail(text); setErrorMessage(null); }}
+                  placeholder="nome@dominio.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholderTextColor="#9ca3af"
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+
+              {/* Data de Nascimento */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Data de Nascimento</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.input,
+                    styles.dateInputContainer,
+                    showDatePicker && styles.inputFocused
+                  ]}
+                  onPress={() => {
+                    if (nascimento && nascimento.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      const parts = nascimento.split('-');
+                      setCurrentYear(parseInt(parts[0]));
+                      setCurrentMonth(parseInt(parts[1]) - 1);
+                    }
+                    setShowDatePicker(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.dateInputText,
+                    !nascimento && styles.dateInputPlaceholder
+                  ]}>
+                    {nascimento || 'Selecionar data de nascimento...'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Morada */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Morada</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    focusedField === 'morada' && styles.inputFocused
+                  ]}
+                  value={morada}
+                  onChangeText={setMorada}
+                  placeholder="Morada do Cliente"
+                  placeholderTextColor="#9ca3af"
+                  onFocus={() => setFocusedField('morada')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+
+              {/* Observações Gerais */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.label}>Observações Gerais</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    focusedField === 'observacoes' && styles.inputFocused
+                  ]}
+                  value={observacoes}
+                  onChangeText={setObservacoes}
+                  placeholder="Escreva observações de atendimento gerais..."
+                  multiline={true}
+                  numberOfLines={3}
+                  placeholderTextColor="#9ca3af"
+                  onFocus={() => setFocusedField('observacoes')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+
+              {/* Separador Visual de Informações Adicionais */}
+              <View style={styles.separatorContainer}>
+                <View style={styles.separatorLine} />
+                <Text style={styles.separatorText}>
+                  Dados Adicionais ({niches.find(n => n.id === empresa.nicho)?.label || 'Outros'})
+                </Text>
+                <View style={styles.separatorLine} />
+              </View>
+
+              {/* Campos Dinâmicos do Nicho */}
+              {getNicheFields().map((field) => (
+                <View key={field.key} style={styles.inputWrapper}>
+                  <Text style={styles.label}>{field.label}</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      field.type === 'textarea' && styles.textArea,
+                      focusedField === field.key && styles.inputFocused
+                    ]}
+                    value={nicheValues[field.key] || ''}
+                    onChangeText={(text) => setNicheValues({ ...nicheValues, [field.key]: text })}
+                    placeholder={field.placeholder}
+                    placeholderTextColor="#9ca3af"
+                    multiline={field.type === 'textarea'}
+                    numberOfLines={field.type === 'textarea' ? 4 : 1}
+                    onFocus={() => setFocusedField(field.key)}
+                    onBlur={() => setFocusedField(null)}
+                  />
+                </View>
+              ))}
+
+              {/* Botão Guardar */}
+              <TouchableOpacity
+                style={[styles.button, isLoading && styles.buttonDisabled]}
+                onPress={handleSave}
+                disabled={isLoading}
+                activeOpacity={0.9}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.surface} size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Guardar Cliente</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        }
+      />
+
       {renderCalendarModal()}
     </SafeAreaView>
   );
