@@ -350,7 +350,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
               <View style={styles.subscriptionHeader}>
                 <Crown size={20} color="#d4af37" weight="fill" />
                 <Text style={[styles.subscriptionTitle, { color: '#d4af37' }]}>
-                  Subscrição Premium Ativa {planoSubscricao ? `(${planoSubscricao})` : ''}
+                  Subscrição Premium Ativa {planoSubscricao ? `(${planoSubscricao})` : '(Mensal)'}
                 </Text>
               </View>
               <Text style={[styles.subscriptionText, { color: COLORS.textPrimary }]}>
