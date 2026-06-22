@@ -72,7 +72,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
   const styles = React.useMemo(() => createStyles(COLORS), [COLORS]);
 
   const [nomeComercial, setNomeComercial] = useState(empresaInicial?.nome_comercial || '');
-  const [nicho, setNicho] = useState<string>(empresaInicial?.nicho || 'estetica');
+  const nicho = empresaInicial?.nicho || 'estetica';
   const [nif, setNif] = useState('');
   const [morada, setMorada] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -287,7 +287,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
           </View>
 
           {/* Card de Subscrição/Período de Teste */}
-          {statusSubscricao === 'teste' && (
+          {statusSubscricao === 'teste' ? (
             <View style={styles.subscriptionCard}>
               <View style={styles.subscriptionHeader}>
                 <Sparkle size={20} color={COLORS.primary} weight="fill" />
@@ -306,7 +306,17 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
                 <Text style={styles.upgradeBtnText}>EFETUAR UPGRADE DA CONTA</Text>
               </TouchableOpacity>
             </View>
-          )}
+          ) : statusSubscricao === 'ativo' ? (
+            <View style={[styles.subscriptionCard, { borderColor: '#d4af37', backgroundColor: darkMode ? '#232015' : '#fdfaf2', borderWidth: 1 }]}>
+              <View style={styles.subscriptionHeader}>
+                <Crown size={20} color="#d4af37" weight="fill" />
+                <Text style={[styles.subscriptionTitle, { color: '#d4af37' }]}>Subscrição Premium Ativa</Text>
+              </View>
+              <Text style={[styles.subscriptionText, { color: COLORS.textPrimary }]}>
+                Obrigado por ser um parceiro Zonno Premium! O seu plano está ativo e com acesso ilimitado a todas as funcionalidades de gestão, faturação e vouchers.
+              </Text>
+            </View>
+          ) : null}
 
           {/* Secção: Perfil do Negócio */}
           <View style={styles.card}>
@@ -363,50 +373,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
             </View>
           </View>
 
-          {/* Secção: Nicho de Atuação (Bento Grid) */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Gear size={20} color={COLORS.primary} weight="bold" />
-              <Text style={styles.cardTitle}>Nicho de Atuação</Text>
-            </View>
-
-            <View style={styles.bentoGrid}>
-              {[
-                { id: 'barbearia', label: 'Barbearia', icon: Scissors },
-                { id: 'clinica', label: 'Clínica', icon: FirstAidKit },
-                { id: 'tattoo', label: 'Tatuagens', icon: Pen },
-                { id: 'estetica', label: 'Estética', icon: FlowerLotus },
-                { id: 'pilates', label: 'Pilates', icon: Barbell },
-                { id: 'outros', label: 'Outro', icon: DotsThree }
-              ].map((item) => {
-                const IconComponent = item.icon;
-                const isSelected = nicho === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.bentoButton,
-                      isSelected && styles.bentoButtonActive
-                    ]}
-                    onPress={() => setNicho(item.id)}
-                    activeOpacity={0.8}
-                  >
-                    <IconComponent 
-                      size={24} 
-                      color={isSelected ? COLORS.primary : COLORS.textSecondary} 
-                      weight={isSelected ? 'fill' : 'regular'} 
-                    />
-                    <Text style={[
-                      styles.bentoText,
-                      isSelected && styles.bentoTextActive
-                    ]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+          {/* O Nicho de Atuação já não é mutável após a criação da conta */}
 
           {/* Secção: Horário de Funcionamento */}
           <View style={styles.card}>
