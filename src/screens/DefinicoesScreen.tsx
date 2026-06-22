@@ -80,6 +80,7 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [statusSubscricao, setStatusSubscricao] = useState(empresaInicial?.status_subscricao || 'teste');
+  const [planoSubscricao, setPlanoSubscricao] = useState<string | null>(null);
 
   const calcularDiasTesteRestantes = () => {
     if (!empresaInicial?.created_at) return 14;
@@ -94,6 +95,8 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
   const handleUpgradeEmpresa = async (plano: string) => {
     try {
       setIsSaving(true);
+      
+      // 1. Atualizar o status de subscrição para ativo na tabela de empresas
       const { error } = await supabase
         .from('empresas')
         .update({ status_subscricao: 'ativo' })
@@ -101,11 +104,44 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
 
       if (error) throw error;
 
+      // 2. Carregar as configurações atuais para emendar o plano no JSONB
+      const { data: configData } = await supabase
+        .from('configuracoes')
+        .select('*')
+        .eq('id', currentUser.empresa_id)
+        .single();
+
+      let currentValor: any = {};
+      if (configData && configData.valor) {
+        currentValor = typeof configData.valor === 'string' ? JSON.parse(configData.valor) : configData.valor;
+      }
+
+      currentValor.subscricao = {
+        plano: plano,
+        data_ativacao: new Date().toISOString()
+      };
+
+      if (configData) {
+        await supabase
+          .from('configuracoes')
+          .update({ valor: currentValor })
+          .eq('id', currentUser.empresa_id);
+      } else {
+        await supabase
+          .from('configuracoes')
+          .insert({
+            id: currentUser.empresa_id,
+            empresa_id: currentUser.empresa_id,
+            valor: currentValor
+          });
+      }
+
       Alert.alert(
         "Sucesso",
         `Upgrade concluído com sucesso no plano ${plano}! Obrigado por confiar no Zonno.`
       );
       setStatusSubscricao('ativo');
+      setPlanoSubscricao(plano);
       setShowUpgradeModal(false);
     } catch (e: any) {
       Alert.alert("Erro", `Não foi possível processar o upgrade: ${e.message}`);
@@ -148,6 +184,9 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
           setEmailNegocio(configJson.email || currentUser.email);
           if (configJson.horarios) {
             setHorarios(configJson.horarios);
+          }
+          if (configJson.subscricao) {
+            setPlanoSubscricao(configJson.subscricao.plano || null);
           }
         } else {
           // Fallback para valores iniciais
@@ -310,7 +349,9 @@ export const DefinicoesScreen: React.FC<DefinicoesScreenProps> = ({
             <View style={[styles.subscriptionCard, { borderColor: '#d4af37', backgroundColor: darkMode ? '#232015' : '#fdfaf2', borderWidth: 1 }]}>
               <View style={styles.subscriptionHeader}>
                 <Crown size={20} color="#d4af37" weight="fill" />
-                <Text style={[styles.subscriptionTitle, { color: '#d4af37' }]}>Subscrição Premium Ativa</Text>
+                <Text style={[styles.subscriptionTitle, { color: '#d4af37' }]}>
+                  Subscrição Premium Ativa {planoSubscricao ? `(${planoSubscricao})` : ''}
+                </Text>
               </View>
               <Text style={[styles.subscriptionText, { color: COLORS.textPrimary }]}>
                 Obrigado por ser um parceiro Zonno Premium! O seu plano está ativo e com acesso ilimitado a todas as funcionalidades de gestão, faturação e vouchers.
