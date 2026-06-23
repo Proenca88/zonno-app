@@ -14,7 +14,10 @@ import {
   Alert,
   Platform,
   SafeAreaView,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TYPOGRAPHY } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
@@ -66,6 +69,319 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [fotoUri, setFotoUri] = useState<string | null>(null);
   const [showFotoModal, setShowFotoModal] = useState(false);
+  const [showNotaModal, setShowNotaModal] = useState(false);
+  const [notaTexto, setNotaTexto] = useState('');
+  const [isSavingNota, setIsSavingNota] = useState(false);
+  const [anexos, setAnexos] = useState<string[]>([]);
+
+  const handleAdicionarAnexo = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = async (ev: any) => {
+            const base64Data = ev.target?.result as string;
+            const novosAnexos = [...anexos, base64Data];
+            setAnexos(novosAnexos);
+            await AsyncStorage.setItem(`@zonno_anexos_${clienteId}`, JSON.stringify(novosAnexos));
+            Alert.alert("Sucesso", "Foto anexada com sucesso.");
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      try {
+        const ImagePicker = require('expo-image-picker');
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permissão Negada', 'É necessária permissão para aceder à galeria.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 0.8,
+        });
+        if (!result.canceled && result.assets?.[0]?.uri) {
+          const novosAnexos = [...anexos, result.assets[0].uri];
+          setAnexos(novosAnexos);
+          await AsyncStorage.setItem(`@zonno_anexos_${clienteId}`, JSON.stringify(novosAnexos));
+          Alert.alert("Sucesso", "Foto anexada com sucesso.");
+        }
+      } catch {
+        Alert.alert('Aviso', 'Não foi possível abrir a galeria neste dispositivo.');
+      }
+    }
+  };
+
+  const handleRemoverAnexo = async (index: number) => {
+    const novosAnexos = anexos.filter((_, i) => i !== index);
+    setAnexos(novosAnexos);
+    await AsyncStorage.setItem(`@zonno_anexos_${clienteId}`, JSON.stringify(novosAnexos));
+    Alert.alert("Sucesso", "Anexo removido.");
+  };
+
+  const handleExportarPDF = () => {
+    if (!cliente) return;
+    
+    if (Platform.OS === 'web') {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        Alert.alert("Erro", "Por favor, permita pop-ups para exportar o PDF.");
+        return;
+      }
+      
+      const formatarDataLocal = (dStr: string) => {
+        try {
+          const d = new Date(dStr);
+          return d.toLocaleDateString('pt-PT');
+        } catch {
+          return dStr;
+        }
+      };
+
+      const itemsTabela = agendamentos.map(ag => {
+        const s = servicos.find(serv => serv.id === ag.servico_id);
+        const prof = usuarios.find(u => u.id === ag.profissional_id);
+        return `
+          <tr>
+            <td>${formatarDataLocal(ag.data)}</td>
+            <td><strong>${s?.nome || 'Serviço'}</strong></td>
+            <td>${prof?.nome || 'Especialista'}</td>
+            <td style="text-align: right;">${Number(ag.valor_pago || 0).toFixed(2)}€</td>
+          </tr>
+        `;
+      }).join('');
+
+      const listNotaItens = historicoTecnico.map(ag => {
+        const s = servicos.find(serv => serv.id === ag.servico_id);
+        return `
+          <div style="margin-bottom: 12px; border-left: 3px solid #000; padding-left: 10px;">
+            <div style="font-size: 11px; font-weight: bold; color: #666;">${formatarDataLocal(ag.data)} - ${s?.nome || 'Serviço'}</div>
+            <div style="font-size: 13px; font-style: italic; margin-top: 4px;">"${ag.observacoes}"</div>
+          </div>
+        `;
+      }).join('');
+
+      const dadosNichoRows = Object.entries(dadosNichoExibicao).map(([key, value]) => `
+        <div style="background-color: #f3f4f6; padding: 10px; border-radius: 6px; width: 45%; margin-bottom: 10px;">
+          <div style="font-size: 9px; font-weight: bold; color: #666; text-transform: uppercase;">${formatKeyLabel(key)}</div>
+          <div style="font-size: 13px; font-weight: 600; color: #111; margin-top: 2px;">${value || 'Não informado'}</div>
+        </div>
+      `).join('');
+
+      const htmlContent = `
+        <html>
+          <head>
+            <title>Ficha de Cliente - ${cliente.nome}</title>
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #171c1f; padding: 30px; line-height: 1.5; }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eaeaea; padding-bottom: 20px; margin-bottom: 30px; }
+              .header h1 { margin: 0; font-size: 26px; font-weight: bold; color: #000; }
+              .header p { margin: 4px 0 0 0; font-size: 14px; color: #666; }
+              .brand { font-size: 20px; font-weight: bold; text-align: right; color: #000; }
+              .section-title { font-size: 16px; font-weight: bold; color: #000; margin-bottom: 12px; border-bottom: 1px solid #eaeaea; padding-bottom: 6px; margin-top: 24px; text-transform: uppercase; letter-spacing: 0.5px; }
+              .grid-info { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
+              .grid-info-item { flex: 1; min-width: 200px; }
+              .grid-info-label { font-size: 11px; font-weight: bold; color: #666; }
+              .grid-info-value { font-size: 14px; font-weight: 600; margin-top: 2px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+              th { background-color: #f3f4f6; text-align: left; padding: 10px; font-size: 11px; font-weight: bold; color: #666; border-bottom: 1px solid #eaeaea; }
+              td { padding: 12px 10px; font-size: 13px; border-bottom: 1px solid #eaeaea; }
+              .footer { text-align: center; font-size: 11px; color: #999; margin-top: 50px; border-top: 1px solid #eaeaea; padding-top: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <h1>${cliente.nome}</h1>
+                <p>Cliente registado em ${formatarData(cliente.created_at || '2023-06-15')}</p>
+              </div>
+              <div class="brand">
+                Zonno
+                <div style="font-size: 11px; font-weight: normal; color: #666;">Ficha de Cliente</div>
+              </div>
+            </div>
+
+            <div class="section-title">Informações de Contacto</div>
+            <div class="grid-info">
+              <div class="grid-info-item">
+                <div class="grid-info-label">E-MAIL</div>
+                <div class="grid-info-value">${cliente.email || 'Não informado'}</div>
+              </div>
+              <div class="grid-info-item">
+                <div class="grid-info-label">TELEMÓVEL</div>
+                <div class="grid-info-value">${cliente.telemovel || 'Não informado'}</div>
+              </div>
+              <div class="grid-info-item">
+                <div class="grid-info-label">ANIVERSÁRIO</div>
+                <div class="grid-info-value">${formatarAniversario(cliente.nascimento)}</div>
+              </div>
+              <div class="grid-info-item">
+                <div class="grid-info-label">MORADA</div>
+                <div class="grid-info-value">${cliente.morada || 'Não informada'}</div>
+              </div>
+            </div>
+
+            <div class="section-title">Resumo Financeiro & Visitas</div>
+            <div class="grid-info">
+              <div class="grid-info-item">
+                <div class="grid-info-label">TOTAL GASTO</div>
+                <div class="grid-info-value" style="font-size: 18px; color: #000;">${totalGasto.toFixed(2)}€</div>
+              </div>
+              <div class="grid-info-item">
+                <div class="grid-info-label">VISITAS REGISTADAS</div>
+                <div class="grid-info-value" style="font-size: 18px; color: #000;">${totalVisitas}</div>
+              </div>
+              <div class="grid-info-item">
+                <div class="grid-info-label">CATEGORIA / ESTADO</div>
+                <div class="grid-info-value" style="font-size: 18px; color: #000;">${categoriaText.toUpperCase()}</div>
+              </div>
+            </div>
+
+            <div class="section-title">Ficha Técnica (${getNicheLabel(empresa.nicho)})</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+              ${dadosNichoRows || '<div style="font-size: 13px; color: #666;">Sem especificações registadas.</div>'}
+            </div>
+
+            <div class="section-title">Observações Gerais</div>
+            <div style="background-color: #f9fafb; padding: 15px; border-radius: 8px; font-size: 13px; border: 1px solid #eaeaea;">
+              ${cliente.observacoes || 'Sem observações registadas.'}
+            </div>
+
+            ${historicoTecnico.length > 0 ? `
+              <div class="section-title">Notas Técnicas do Histórico</div>
+              <div>
+                ${listNotaItens}
+              </div>
+            ` : ''}
+
+            <div class="section-title">Histórico de Visitas</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%;">DATA</th>
+                  <th style="width: 45%;">SERVIÇO</th>
+                  <th style="width: 25%;">ESPECIALISTA</th>
+                  <th style="text-align: right; width: 15%;">VALOR</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsTabela || '<tr><td colspan="4" style="text-align: center; color: #999;">Nenhuma visita registada.</td></tr>'}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              Relatório gerado em ${new Date().toLocaleDateString('pt-PT')} ${new Date().toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'})} • Zonno All rights reserved.
+            </div>
+            
+            <script>
+              window.onload = function() {
+                window.print();
+              }
+            </script>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    } else {
+      const formatarDataLocal = (dStr: string) => {
+        try {
+          const d = new Date(dStr);
+          return d.toLocaleDateString('pt-PT');
+        } catch {
+          return dStr;
+        }
+      };
+
+      const textoHistorico = agendamentos.map(ag => {
+        const s = servicos.find(serv => serv.id === ag.servico_id);
+        return `- ${formatarDataLocal(ag.data)}: ${s?.nome || 'Serviço'} - ${Number(ag.valor_pago || 0).toFixed(2)}€`;
+      }).join('\n');
+
+      const textoFicha = `
+ZONNO - FICHA DE CLIENTE
+------------------------
+Nome: ${cliente.nome}
+E-mail: ${cliente.email || 'Não informado'}
+Telemóvel: ${cliente.telemovel || 'Não informado'}
+Nascimento: ${formatarAniversario(cliente.nascimento)}
+Morada: ${cliente.morada || 'Não informada'}
+
+KPIs E ESTADO
+Total Gasto: ${totalGasto.toFixed(2)}€
+Visitas: ${totalVisitas}
+Estado: ${categoriaText.toUpperCase()}
+
+FICHA TÉCNICA (${getNicheLabel(empresa.nicho)})
+${Object.entries(dadosNichoExibicao).map(([k, v]) => `${formatKeyLabel(k)}: ${v}`).join('\n')}
+
+OBSERVAÇÕES
+${cliente.observacoes || 'Nenhuma.'}
+
+HISTÓRICO DE VISITAS
+${textoHistorico || 'Nenhuma.'}
+      `;
+      
+      const Clipboard = require('react-native').Clipboard;
+      Clipboard.setString(textoFicha);
+      Alert.alert("Ficha Copiada", "As informações da ficha do cliente foram copiadas para a área de transferência em formato de texto para poder partilhar.");
+    }
+  };
+
+  const handleSaveNota = async () => {
+    if (!notaTexto.trim()) return;
+    setIsSavingNota(true);
+    try {
+      const dataHoje = new Date();
+      const ano = dataHoje.getFullYear();
+      const mes = String(dataHoje.getMonth() + 1).padStart(2, '0');
+      const dia = String(dataHoje.getDate()).padStart(2, '0');
+      const dataStr = `${ano}-${mes}-${dia}`;
+      
+      const horaStr = `${String(dataHoje.getHours()).padStart(2, '0')}:${String(dataHoje.getMinutes()).padStart(2, '0')}`;
+      
+      const novoAgendamento = {
+        id: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c === 'x' ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        }),
+        empresa_id: currentUser.empresa_id,
+        cliente_id: clienteId,
+        servico_id: servicos[0]?.id || null,
+        profissional_id: currentUser.profissional_id || currentUser.id,
+        data: dataStr,
+        hora: horaStr,
+        status: 'concluido' as const,
+        valor_pago: 0,
+        observacoes: notaTexto.trim(),
+      };
+
+      const { error } = await supabase
+        .from('agendamentos')
+        .insert([novoAgendamento]);
+
+      if (error) throw error;
+
+      setAgendamentos(prev => [novoAgendamento, ...prev]);
+      setNotaTexto('');
+      setShowNotaModal(false);
+      Alert.alert("Sucesso", "Nota técnica guardada com sucesso.");
+    } catch (e: any) {
+      console.error('Erro ao guardar nota:', e);
+      Alert.alert("Erro", `Não foi possível guardar a nota: ${e.message || 'Erro de rede'}`);
+    } finally {
+      setIsSavingNota(false);
+    }
+  };
 
   useEffect(() => {
     const loadAllData = async () => {
@@ -98,6 +414,14 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
         if (agResult.data) setAgendamentos(agResult.data);
         if (svResult.data) setServicos(svResult.data);
         if (usResult.data) setUsuarios(usResult.data);
+
+        // Carregar anexos do AsyncStorage
+        const savedAnexos = await AsyncStorage.getItem(`@zonno_anexos_${clienteId}`);
+        if (savedAnexos) {
+          setAnexos(JSON.parse(savedAnexos));
+        } else {
+          setAnexos([]);
+        }
       } catch (e) {
         console.error('Erro ao carregar dados da ficha do cliente:', e);
       } finally {
@@ -542,13 +866,13 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           {/* Card 4: Histórico Técnico (Timeline) */}
           <View style={styles.fullWidthCard}>
             <View style={styles.cardHeaderWithAction}>
-              <View>
+              <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.bentoCardTitle}>Histórico Técnico & Notas</Text>
                 <Text style={styles.bentoCardSub}>Evolução técnica e observações de atendimentos.</Text>
               </View>
               <TouchableOpacity 
                 style={styles.headerActionBtn} 
-                onPress={() => Alert.alert("Nova Nota", "Adicionar nova nota técnica...")}
+                onPress={() => setShowNotaModal(true)}
                 activeOpacity={0.7}
               >
                 <PlusCircle size={18} color={COLORS.primary} />
@@ -608,13 +932,35 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
             <Text style={styles.bentoCardTitle}>Anexos & Documentação</Text>
             <TouchableOpacity 
               style={styles.uploadBox} 
-              onPress={() => Alert.alert("Upload", "Selecionar fotos ou ficheiros...")}
+              onPress={handleAdicionarAnexo}
               activeOpacity={0.7}
             >
               <UploadSimple size={32} color={COLORS.textSecondary} />
               <Text style={styles.uploadText}>Anexos & Documentação</Text>
               <Text style={styles.uploadSubtext}>Arraste ou selecione fotos de progresso ou exames</Text>
             </TouchableOpacity>
+
+            {anexos.length > 0 && (
+              <ScrollView 
+                horizontal={true} 
+                showsHorizontalScrollIndicator={false}
+                style={styles.anexosList}
+                contentContainerStyle={{ gap: 12, paddingVertical: 8 }}
+              >
+                {anexos.map((uri, index) => (
+                  <View key={index} style={styles.anexoItem}>
+                    <Image source={{ uri }} style={styles.anexoThumb} />
+                    <TouchableOpacity 
+                      style={styles.anexoDeleteBtn} 
+                      onPress={() => handleRemoverAnexo(index)}
+                      activeOpacity={0.7}
+                    >
+                      <Trash size={12} color="#ffffff" weight="bold" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
           </View>
 
           {/* Card 6: Observações Gerais */}
@@ -628,12 +974,12 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
           </View>
 
           {/* Card 7: Histórico de Visitas (Tabela) */}
-          <View style={[styles.fullWidthCard, { paddingBottom: 0, overflow: 'hidden' }]}>
+          <View style={styles.fullWidthCard}>
             <View style={styles.cardHeaderWithAction}>
               <Text style={styles.bentoCardTitle}>Histórico de Visitas</Text>
               <TouchableOpacity 
                 style={styles.headerActionBtn} 
-                onPress={() => Alert.alert("PDF", "Exportar histórico para PDF...")}
+                onPress={handleExportarPDF}
                 activeOpacity={0.7}
               >
                 <DownloadSimple size={18} color={COLORS.primary} />
@@ -780,6 +1126,64 @@ export const FichaClienteScreen: React.FC<FichaClienteScreenProps> = ({
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal de Nova Nota Técnica */}
+      <Modal
+        visible={showNotaModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => { if (!isSavingNota) setShowNotaModal(false); }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.customModalOverlay}
+        >
+          <TouchableOpacity 
+            style={styles.customModalCloseArea} 
+            activeOpacity={1} 
+            onPress={() => { if (!isSavingNota) setShowNotaModal(false); }}
+            disabled={isSavingNota}
+          />
+          <View style={styles.optionsModalContent}>
+            <Text style={styles.modalTitle}>Nova Nota Técnica</Text>
+            <Text style={styles.modalSubTitle}>Adicione observações ou detalhes sobre o atendimento deste cliente:</Text>
+            
+            <TextInput
+              style={styles.notaInput}
+              value={notaTexto}
+              onChangeText={setNotaTexto}
+              placeholder="Escreva a nota técnica aqui..."
+              placeholderTextColor="#9ca3af"
+              multiline={true}
+              numberOfLines={4}
+              maxLength={500}
+              editable={!isSavingNota}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+              <TouchableOpacity 
+                style={[styles.modalCancelBtn, { flex: 1, marginTop: 0 }]}
+                onPress={() => { setShowNotaModal(false); setNotaTexto(''); }}
+                disabled={isSavingNota}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalSubmitBtn, { flex: 1 }]}
+                onPress={handleSaveNota}
+                disabled={isSavingNota || !notaTexto.trim()}
+              >
+                {isSavingNota ? (
+                  <ActivityIndicator color={COLORS.surface} size="small" />
+                ) : (
+                  <Text style={styles.modalSubmitText}>Guardar Nota</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal de Opções do Cliente (Editar/Eliminar) */}
@@ -987,7 +1391,6 @@ const createStyles = (COLORS: any) => StyleSheet.create({
     width: '100%',
   },
   bentoCard: {
-    flex: 1,
     backgroundColor: COLORS.surface,
     borderRadius: 16,
     borderWidth: 1,
@@ -1031,7 +1434,6 @@ const createStyles = (COLORS: any) => StyleSheet.create({
     marginTop: 1,
   },
   statsContainer: {
-    flex: 1,
   },
   statItem: {
     width: '100%',
@@ -1293,8 +1695,8 @@ const createStyles = (COLORS: any) => StyleSheet.create({
     backgroundColor: COLORS.inputBackground,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
+    borderRadius: 8,
+    marginTop: 12,
   },
   viewMoreTableBtnText: {
     fontSize: 12,
@@ -1428,5 +1830,61 @@ const createStyles = (COLORS: any) => StyleSheet.create({
     fontSize: 14,
     fontFamily: TYPOGRAPHY.fontFamily.sansBold,
     color: COLORS.textPrimary,
+  },
+  notaInput: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.inputBackground + '40',
+    padding: 12,
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sans,
+    color: COLORS.textPrimary,
+    textAlignVertical: 'top',
+    marginBottom: 8,
+  },
+  modalSubmitBtn: {
+    paddingVertical: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubmitText: {
+    fontSize: 14,
+    fontFamily: TYPOGRAPHY.fontFamily.sansBold,
+    color: COLORS.surface,
+  },
+  anexosList: {
+    marginTop: 16,
+    flexDirection: 'row',
+  },
+  anexoItem: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    backgroundColor: COLORS.inputBackground,
+  },
+  anexoThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  anexoDeleteBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(186, 26, 26, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
   },
 });

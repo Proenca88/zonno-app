@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { TYPOGRAPHY } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 import { CaretLeft } from 'phosphor-react-native';
+import { supabase } from '../remote/supabase';
 
 export function ForgotPasswordScreen({ navigation }: any) {
   const { COLORS } = useTheme();
@@ -11,15 +12,47 @@ export function ForgotPasswordScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
-  const handleRecover = () => {
-    if (!email) return;
+  const handleRecover = async () => {
+    if (!email.trim()) return;
     setLoading(true);
-    // Simular envio
-    setTimeout(() => {
+    
+    try {
+      const { data: users, error } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('email', email.trim().toLowerCase())
+        .eq('status', 'ativo');
+        
+      if (error) throw error;
+      
+      if (!users || users.length === 0) {
+        Alert.alert(
+          "Conta não encontrada",
+          "Não encontrámos nenhuma conta ativa associada a este e-mail profissional."
+        );
+        setLoading(false);
+        return;
+      }
+      
+      // Simular envio
+      setTimeout(() => {
+        setLoading(false);
+        Alert.alert(
+          "Sucesso",
+          "Link de recuperação enviado para o seu e-mail profissional!",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+      }, 1000);
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert("Erro", `Não foi possível verificar a conta: ${e.message || 'Erro de rede'}`);
       setLoading(false);
-      alert('Link de recuperação enviado para o seu e-mail!');
-      navigation.goBack();
-    }, 1500);
+    }
   };
 
   return (

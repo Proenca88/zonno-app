@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TYPOGRAPHY } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../remote/supabase';
@@ -31,6 +32,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuc
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
+
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        const savedRememberMe = await AsyncStorage.getItem('@zonno_remember_me');
+        if (savedRememberMe === 'true') {
+          const savedEmail = await AsyncStorage.getItem('@zonno_saved_email');
+          const savedPassword = await AsyncStorage.getItem('@zonno_saved_password');
+          if (savedEmail) setEmail(savedEmail);
+          if (savedPassword) setPassword(savedPassword);
+          setRememberMe(true);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar credenciais salvas:', e);
+      }
+    };
+    loadSavedCredentials();
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -95,6 +114,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, onLoginSuc
       }
 
       // 4. Sucesso no Login
+      if (rememberMe) {
+        await AsyncStorage.setItem('@zonno_remember_me', 'true');
+        await AsyncStorage.setItem('@zonno_saved_email', email.trim().toLowerCase());
+        await AsyncStorage.setItem('@zonno_saved_password', password);
+      } else {
+        await AsyncStorage.removeItem('@zonno_remember_me');
+        await AsyncStorage.removeItem('@zonno_saved_email');
+        await AsyncStorage.removeItem('@zonno_saved_password');
+      }
+
       onLoginSuccess(user as Usuario, empresa as Empresa);
     } catch (e: any) {
       console.error(e);
